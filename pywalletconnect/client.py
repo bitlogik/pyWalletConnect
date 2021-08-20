@@ -126,7 +126,6 @@ class WCClient:
             rcvd_message = self.data_queue.pop()
             if rcvd_message and rcvd_message.startswith('{"'):
                 return self.enc_channel.decrypt_payload(loads(rcvd_message))
-            return rcvd_message
         return None
 
     def get_message(self):
