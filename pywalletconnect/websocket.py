@@ -57,6 +57,8 @@ class WebSocketClient:
         """Open the WebSocket connection to a given a URL."""
         ws_url = urlparse(wsURL)
         assert ws_url.scheme == "https"
+        self.partial_txtmessages = []
+        self.partial_binmessages = []
         self.received_messages = []
         port_num = ws_url.port or DEFAULT_HTTPS_PORT
         try:
@@ -156,12 +158,23 @@ class WebSocketClient:
                     self.send(event.response())
                     logger.debug("Pong reply sent")
                 elif isinstance(event, TextMessage):
-                    logger.debug("WebSocket Text message received : %s", event.data)
+                    self.partial_txtmessages.append(event.data)
                     if event.message_finished:
-                        self.received_messages.insert(0, event.data)
+                        full_message = "".join(self.partial_txtmessages)
+                        logger.debug(
+                            "WebSocket Text message received : %s", full_message
+                        )
+                        self.received_messages.insert(0, full_message)
+                        self.partial_txtmessages = []
                 elif isinstance(event, BytesMessage):
-                    logger.debug("WebSocket Bytes message received : %s", event.data)
+                    self.partial_binmessages.append(event.data)
                     if event.message_finished:
-                        self.received_messages.insert(0, event.data)
+                        full_message = b"".join(self.partial_binmessages)
+                        logger.debug(
+                            "WebSocket Binary message received : %s", full_message
+                        )
+                        self.received_messages.insert(0, full_message)
+                        self.partial_binmessages = []
+
                 else:
                     Exception("Unknown WebSocket event : {!r}".format(event))
