@@ -123,7 +123,7 @@ class WCClient:
         Non-blocking, so return None if no data has been received.
         """
         if len(self.data_queue) > 0:
-            rcvd_message = self.data_queue.pop(0)
+            rcvd_message = self.data_queue.pop()
             if rcvd_message and rcvd_message.startswith('{"'):
                 return self.enc_channel.decrypt_payload(loads(rcvd_message))
             return rcvd_message

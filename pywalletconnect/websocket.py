@@ -74,7 +74,7 @@ class WebSocketClient:
                 sleep(UNIT_WAITING_TIME)
                 self.get_messages()
                 while len(self.received_messages) > 0:
-                    res = self.received_messages.pop(0)
+                    res = self.received_messages.pop()
                     if res == "established":
                         # Start a timer to reply pings in real-time
                         # and collect input messages
