@@ -122,10 +122,14 @@ class WCClient:
         """Read the first data available in the receive queue messages.
         Non-blocking, so return None if no data has been received.
         """
+        logger.debug("Get Data, full messages queue : %s", str(self.data_queue))
         if len(self.data_queue) > 0:
             rcvd_message = self.data_queue.pop()
+            logger.debug("A message pop from the queue : %s", rcvd_message)
             if rcvd_message and rcvd_message.startswith('{"'):
-                return self.enc_channel.decrypt_payload(loads(rcvd_message))
+                request_received = self.enc_channel.decrypt_payload(loads(rcvd_message))
+                logger.debug("Request message decrypted : %s", request_received)
+                return request_received
         return None
 
     def get_message(self):
@@ -140,9 +144,9 @@ class WCClient:
         if rcvd_data and isinstance(rcvd_data, bytes) and rcvd_data.startswith(b'{"'):
             # return (id, method, params)
             msg_ready = json_rpc_unpack(rcvd_data)
+            logger.debug("Get data, WalletConnect message available : %s", msg_ready)
         else:
             msg_ready = (None, "", [])
-        logger.debug("Get data, WalletConnect message available : %s", msg_ready)
         return msg_ready
 
     def reply(self, req_id, result):
