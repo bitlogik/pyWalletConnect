@@ -101,9 +101,10 @@ class WebSocketClient:
         """Stop read timer and close the TLS connection when deleting the object."""
         logger.debug("Cancelling the WebSocket reading timer")
         self.timer_pings.cancel()
-        logger.debug("Closing WebSocket")
-        self.ssocket.close()
-        delattr(self, "ssocket")
+        if hasattr(self, "ssocket"):
+            logger.debug("Closing WebSocket")
+            self.ssocket.close()
+            delattr(self, "ssocket")
 
     def send(self, data_frame):
         """Send a WebSocket data frame to the host."""
