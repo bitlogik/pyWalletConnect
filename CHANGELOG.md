@@ -1,6 +1,10 @@
 
 # pyWalletConnect changes log
 
+## 1.1.1
+
+* Test if the WebSocket was already closed
+
 ## 1.1.0
 
 * Can work with bigger split messages
