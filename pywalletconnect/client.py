@@ -110,6 +110,18 @@ class WCClient:
         """Give the URL of the WebSocket relay bridge."""
         return self.relay_url
 
+    def reconnect(self):
+        """Reconnect to relay host when disconnected"""
+        # Internal use, needs websock deleted (None)
+        try:
+            self.websock = WebSocketClient(self.relay_url)
+            self.data_queue = self.websock.received_messages
+        except Exception as exc:
+            logger.error("Error during reconnection : %s", str(exc), exc_info=exc)
+            raise WCClientException(exc) from exc
+        self.subscribe(self.wallet_id)
+        logger.debug("WebSocket reconnected")
+
     def write(self, data_dict):
         """Send a data_object to the WalletConnect relay.
         Usually : { topic: 'xxxx', type: 'pub/sub', payload: 'xxxx' }
@@ -122,6 +134,10 @@ class WCClient:
         """Read the first data available in the receive queue messages.
         Non-blocking, so return None if no data has been received.
         """
+        # Check if socket was disconnected
+        if not hasattr(self.websock, "ssocket"):
+            logger.debug("Reconnecting WebSocket")
+            self.reconnect()
         logger.debug("Get Data, full messages queue : %s", str(self.data_queue))
         if len(self.data_queue) > 0:
             rcvd_message = self.data_queue.pop()

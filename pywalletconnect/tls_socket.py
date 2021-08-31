@@ -16,12 +16,15 @@
 
 """TLS socket for pyWalletConnect"""
 
-
+from logging import getLogger
 from ssl import create_default_context, SSLWantReadError
 from socket import create_connection
 
 
 RECEIVING_BUFFER_SIZE = 8192
+
+
+logger = getLogger(__name__)
 
 
 class TLSsocket:
@@ -32,6 +35,7 @@ class TLSsocket:
         context = create_default_context()
         sock = create_connection((domain, port))
         self.conn = context.wrap_socket(sock, server_hostname=domain)
+        logger.debug("Socket connected")
         self.conn.settimeout(0)
 
     def __del__(self):
@@ -41,6 +45,7 @@ class TLSsocket:
     def close(self):
         """Close the socket."""
         if self.conn is not None:
+            logger.debug("Closing socket")
             self.conn.close()
             self.conn = None
 
@@ -54,6 +59,11 @@ class TLSsocket:
         If no data received from host since last read, return empty bytes.
         """
         try:
-            return self.conn.recv(RECEIVING_BUFFER_SIZE)
+            datar = self.conn.recv(RECEIVING_BUFFER_SIZE)
+            if datar == b"":
+                logger.debug("Socket disconnected")
+                self.close()
+            return datar
         except SSLWantReadError:
+            # No data available
             return b""

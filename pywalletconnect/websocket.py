@@ -136,6 +136,11 @@ class WebSocketClient:
         Close underlying TLS socket if WS connection closed.
         Auto-reply to ping messages.
         """
+        # Test if socket is still opened
+        if self.ssocket.conn is None:
+            logger.debug("Socket was closed by remote party")
+            self.close()
+            return
         # Listen to server data and build a queue list
         datarcv = self.ssocket.receive()
         if datarcv:
