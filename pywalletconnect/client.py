@@ -21,6 +21,7 @@ from urllib.parse import unquote
 from json import loads
 from logging import getLogger
 from re import compile as regex_compile
+from threading import Timer
 from time import sleep
 from uuid import uuid4
 
@@ -126,6 +127,14 @@ class WCClient:
         """Send a data_object to the WalletConnect relay.
         Usually : { topic: 'xxxx', type: 'pub/sub', payload: 'xxxx' }
         """
+        # Wait asynchronously for reconnection
+        # Be sure to call get_data/get_message periodically to trigger auto-reconnect
+        if not hasattr(self.websock, "ssocket"):
+            # Will call itself after 250 ms
+            timer_newwrite = Timer(0.25, self.write, [data_dict])
+            timer_newwrite.daemon = True
+            timer_newwrite.start()
+            return
         raw_data = json_encode(data_dict)
         logger.debug("WalletConnect message sending to relay : %s", raw_data)
         self.websock.write_message(raw_data)
