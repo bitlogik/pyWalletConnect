@@ -1,6 +1,10 @@
 
 # pyWalletConnect changes log
 
+## 1.1.2
+
+* Add auto reconnect when socket closed
+
 ## 1.1.1
 
 * Test if the WebSocket was already closed

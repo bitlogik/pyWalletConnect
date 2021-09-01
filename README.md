@@ -45,7 +45,7 @@ Instanciate with `pywalletconnect.WCClient.from_wc_uri`, then use methods functi
 Basic example :
 
 ```python
-from pywalletconnect import WCClient
+from pywalletconnect import WCClient, WCClientInvalidOption
 # Input the wc URI
 string_uri = input("Input the WalletConnect URI : ")
 wallet_dapp = WCClient.from_wc_uri(string_uri)
@@ -91,8 +91,7 @@ def process_sendtransaction(call_id, tx):
     <...>
     # Broadcast the tx
     # Provide the transaction id as result
-    result = "0x..." # Tx id
-    wallet_dapp.reply(call_id, result)
+    return "0x..." # Tx id
 
 def watch_messages():
     # Watch for messages received.
@@ -112,12 +111,15 @@ def watch_messages():
                 raise Exception("Disconnected by the Dapp.")
         # Dispatch query processing
         elif "eth_signTypedData" == method:
-            process_signtypeddata(id_request, parameters[0])
+            result = process_signtypeddata(id_request, parameters[1])
+            wallet_dapp.reply(call_id, result)
         elif "eth_sendTransaction" == method:
-            tx_to_sign = parameters[0]
-            process_sendtransaction(id_request, tx_to_sign)
+            tx_to_sign = parameters[1]
+            result = process_sendtransaction(id_request, tx_to_sign)
+            wallet_dapp.reply(call_id, result)
         elif "eth_sign" == method:
-            process_signtransaction(parameters[0])
+            result = process_signtransaction(parameters[1])
+            wallet_dapp.reply(call_id, result)
         <...>
         # Next loop
         wc_message = wallet_dapp.get_message()
@@ -128,6 +130,7 @@ def watch_messages():
 apptimer = Timer(4000)
 # Call watch_messages when expires periodically
 apptimer.notify = watch_messages
+
 ```
 
 See also the [RPC methods in WalletConnect](https://docs.walletconnect.org/v/1.0/json-rpc-api-methods/ethereum) to know more about the expected result regarding a specific RPC call.
@@ -147,6 +150,7 @@ Give the URL of the WebSocket relay bridge.
 
 `.get_message()`  
 Get a RPC call message from the internal waiting list. pyWalletConnect maintains an internal pool of received request messages from the dapp. And this get_message method pops out a message in a FIFO manner : the first method call provides the oldest (first) received message. It can be used like a pump : call *get_message()* until an empty response. Because it reads a message from the receiving bucket one by one.  
+This needs to be called periodically because this triggers the auto reconnection (When the WebSocket is abrubtly disconnected by the relay).  
 Return : (RPCid, method, params) or (None, "", []) when no data were received since the last call (or from the initial session connection).  
 Non-blocking, so always returns immediately.
 
