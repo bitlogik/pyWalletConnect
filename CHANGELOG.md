@@ -1,6 +1,10 @@
 
 # pyWalletConnect changes log
 
+## 1.1.3
+
+* Improve socket closing
+
 ## 1.1.2
 
 * Add auto reconnect when socket closed
