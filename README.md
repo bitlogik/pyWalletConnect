@@ -138,7 +138,7 @@ See also the [RPC methods in WalletConnect](https://docs.walletconnect.org/v/1.0
 ## Interface methods of WCClient
 
 `WCClient.from_wc_uri( wc_uri_str )`  
-Create a WalletConnect wallet client from a wc URI.  
+Create a WalletConnect wallet client from a wc v1 URI.  
 wc_uri_str : the wc full EIP1328 URI provided by the Dapp.  
 You need to call *open_session* immediately after to get the session request info.
 

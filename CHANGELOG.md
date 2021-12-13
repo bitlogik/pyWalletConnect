@@ -1,6 +1,10 @@
 
 # pyWalletConnect changes log
 
+## 1.1.4
+
+* Explicitely reject WC v2
+
 ## 1.1.3
 
 * Improve socket closing

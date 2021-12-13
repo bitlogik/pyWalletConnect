@@ -87,6 +87,8 @@ class WCClient:
     @classmethod
     def from_wc_uri(cls, wc_uri_str):
         """Create a WalletConnect client from wc URI"""
+        if wc_uri_str.find("@1?") < 0:
+            raise WCClientInvalidOption("Only WalletConnect v1 is supported for now")
         found = WCClient.wc_uri_pattern.findall(wc_uri_str)
         if not found:
             raise WCClientInvalidOption("Bad wc URI provided\nMust be : wc:xxxx...")
