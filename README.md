@@ -48,14 +48,15 @@ Basic example :
 from pywalletconnect import WCClient, WCClientInvalidOption
 # Input the wc URI
 string_uri = input("Input the WalletConnect URI : ")
-wallet_dapp = WCClient.from_wc_uri(string_uri)
-# Wait for the sessionRequest info
 try:
-    req_id, req_chain_id, request_info = wallet_dapp.open_session()
+    wallet_dapp = WCClient.from_wc_uri(string_uri)
 except WCClientInvalidOption as exc:
     # In case error in the wc URI provided
     wallet_dapp.close()
     raise InvalidOption(exc)
+# Wait for the sessionRequest info
+# Can throw WCClientException "sessionRequest timeout"
+req_id, req_chain_id, request_info = wallet_dapp.open_session()
 if req_chain_id != account.chainID:
     # Chain id mismatch
     wallet_dapp.close()
