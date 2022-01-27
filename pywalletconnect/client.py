@@ -17,28 +17,27 @@
 """WalletConnect wallet client for pyWalletConnect"""
 
 
-from urllib.parse import unquote
+from urllib.parse import unquote, urlparse, parse_qs
 from json import loads
 from logging import getLogger
 from re import compile as regex_compile
 from threading import Timer
-from time import sleep
+from time import sleep, time
 from uuid import uuid4
 
 from .websocket import WebSocketClient, CYCLES_TIMEOUT, UNIT_WAITING_TIME
-from .enc_tunnel import EncryptedTunnel
-from .json_rpc import json_encode, json_rpc_pack_response, json_rpc_unpack
+from .enc_tunnel import EncryptedTunnel, EncryptedTunnelv2, KeyAgreement
+from .json_rpc import (
+    json_encode,
+    json_rpc_pack_response,
+    json_rpc_unpack,
+    rpc_query,
+    json_rpc_unpack_response,
+)
 from .version import VERSION
 
 # ---- WalletConnect settings
 
-
-wallet_metadata = {
-    "description": f"pyWalletConnect v{VERSION} by BitLogiK",
-    "url": "https://github.com/bitlogik/pyWalletConnect",
-    "icons": [""],
-    "name": "pyWalletConnect",
-}
 
 WC_AES_KEY_SIZE = 32  # WCv1 uses 256 bits AES key
 
@@ -54,30 +53,34 @@ class WCClientInvalidOption(Exception):
 
 
 class WCClient:
-    """WalletConnect wallet client connected to a relay with WebSocket."""
+    """WalletConnect wallet v1 and v2 base client."""
 
     wc_uri_pattern = regex_compile(r"^wc:(.+)@(\d)\?bridge=(.+)&key=(.+)$")
+    project_id = ""
+    wallet_metadata = {
+        "description": f"pyWalletConnect v{VERSION} by BitLogiK",
+        "url": "https://github.com/bitlogik/pyWalletConnect",
+        "icons": [""],
+        "name": "pyWalletConnect",
+    }
 
-    def __init__(self, ws_url, topic, symkey):
-        """Create a WalletConnect client from parameters.
-        Call open_session immediately after to get the session request info.
-        """
-        # Chain ID is managed outside the walletconnect classes
-        # Shall be managed by the user / webapp
-        logger.debug("Opening a WalletConnect client with %s", ws_url)
-        self.relay_url = ws_url
-        try:
-            self.websock = WebSocketClient(ws_url)
-            self.data_queue = self.websock.received_messages
-        except Exception as exc:
-            logger.error(
-                "Error during device initialization : %s", str(exc), exc_info=exc
-            )
-            raise WCClientException(exc) from exc
-        self.wallet_id = str(uuid4())
-        self.enc_channel = EncryptedTunnel(symkey)
-        self.app_peer_id = None
-        self.subscribe(topic)
+    def __init__(self):
+        self.relay_url = ""
+        self.wallet_id = ""
+        self.app_peer_id = ""
+        self.enc_channel = None
+        self.websock = None
+        self.data_queue = None
+
+    @classmethod
+    def set_wallet_metadata(cls, wallet_metadata):
+        """Can override the default wallet metadata."""
+        cls.wallet_metadata = wallet_metadata
+
+    @classmethod
+    def set_project_id(cls, project_id):
+        """Set the project id, mandatory for v2, using the waku official relay."""
+        cls.project_id = project_id
 
     def close(self):
         """Close the WebSocket connection when deleting the object."""
@@ -87,27 +90,15 @@ class WCClient:
     @classmethod
     def from_wc_uri(cls, wc_uri_str):
         """Create a WalletConnect client from wc URI"""
-        if wc_uri_str.find("@1?") < 0:
-            raise WCClientInvalidOption("Only WalletConnect v1 is supported for now")
-        found = WCClient.wc_uri_pattern.findall(wc_uri_str)
-        if not found:
-            raise WCClientInvalidOption("Bad wc URI provided\nMust be : wc:xxxx...")
-        wc_data = found[0]
-        if len(wc_data) != 4:
-            raise WCClientInvalidOption("Bad data received in URI")
-        handshake_topic = wc_data[0]
-        wc_ver = wc_data[1]
-        bridge_url = unquote(wc_data[2])
-        if len(wc_data[3]) % 2 != 0 or len(wc_data[3]) // 2 != WC_AES_KEY_SIZE:
-            raise WCClientInvalidOption("Bad key data format in URI")
-        sym_key = bytes.fromhex(wc_data[3])
-        if wc_ver != "1":
-            raise WCClientInvalidOption("Bad WalletConnect version. Only supports v1.")
-        logger.debug(
-            "wc URI provided decoded successfully, "
-            "now starting the WalletConnect client"
+        if wc_uri_str.find("@1?") >= 0:
+            # v1
+            return WCv1Client.from_wc1_uri(wc_uri_str)
+        if wc_uri_str.find("@2?") >= 0:
+            # Is it a V2 ?
+            return WCv2Client.from_wc2_uri(wc_uri_str)
+        raise WCClientInvalidOption(
+            "Only WalletConnect v1 and v2 are supported for now"
         )
-        return cls(bridge_url, handshake_topic, sym_key)
 
     def get_relay_url(self):
         """Give the URL of the WebSocket relay bridge."""
@@ -141,6 +132,75 @@ class WCClient:
         logger.debug("WalletConnect message sending to relay : %s", raw_data)
         self.websock.write_message(raw_data)
 
+    def reply(self, req_id, result):
+        """Send a RPC response to the webapp through the relay."""
+        payload_bin = json_rpc_pack_response(req_id, result)
+        datafull = {
+            "topic": self.app_peer_id,
+            "type": "pub",
+            "payload": json_encode(self.enc_channel.encrypt_payload(payload_bin)),
+        }
+        logger.debug(
+            "--> WalletConnect Replying id[%i] : result=%s\nRaw message: %s",
+            req_id,
+            result,
+            payload_bin,
+        )
+        self.write(datafull)
+
+    def subscribe(self, peer_uuid):
+        """Abstract class for topic subscribe."""
+        raise NotImplementedError
+
+
+class WCv1Client(WCClient):
+    """WalletConnect v1 wallet client connected to a relay with WebSocket."""
+
+    def __init__(self, ws_url, topic, symkey):
+        """Create a WalletConnect client from parameters.
+        Call open_session immediately after to get the session request info.
+        """
+        # Chain ID is managed outside the walletconnect classes
+        # Shall be managed by the user / webapp
+        super().__init__()
+        logger.debug("Opening a WalletConnect client with %s", ws_url)
+        self.relay_url = ws_url
+        try:
+            self.websock = WebSocketClient(ws_url)
+            self.data_queue = self.websock.received_messages
+        except Exception as exc:
+            logger.error(
+                "Error during device initialization : %s", str(exc), exc_info=exc
+            )
+            raise WCClientException(exc) from exc
+        self.wallet_id = str(uuid4())
+        self.enc_channel = EncryptedTunnel(symkey)
+        self.app_peer_id = None
+        self.subscribe(topic)
+
+    @classmethod
+    def from_wc1_uri(cls, wc_uri_str):
+        """Create a WalletConnect client from wc v1 URI"""
+        found = WCClient.wc_uri_pattern.findall(wc_uri_str)
+        if not found:
+            raise WCClientInvalidOption("Bad wc URI provided\nMust be : wc:xxxx...")
+        wc_data = found[0]
+        if len(wc_data) != 4:
+            raise WCClientInvalidOption("Bad data received in URI")
+        handshake_topic = wc_data[0]
+        wc_ver = wc_data[1]
+        bridge_url = unquote(wc_data[2])
+        if len(wc_data[3]) % 2 != 0 or len(wc_data[3]) // 2 != WC_AES_KEY_SIZE:
+            raise WCClientInvalidOption("Bad key data format in URI")
+        sym_key = bytes.fromhex(wc_data[3])
+        if wc_ver != "1":
+            raise WCClientInvalidOption("Bad WalletConnect version. Only supports v1.")
+        logger.debug(
+            "wc URI provided decoded successfully, "
+            "now starting the WalletConnect client"
+        )
+        return cls(bridge_url, handshake_topic, sym_key)
+
     def get_data(self):
         """Read the first data available in the receive queue messages.
         Non-blocking, so return None if no data has been received.
@@ -149,7 +209,6 @@ class WCClient:
         if not hasattr(self.websock, "ssocket"):
             logger.debug("Reconnecting WebSocket")
             self.reconnect()
-        logger.debug("Get Data, full messages queue : %s", str(self.data_queue))
         if len(self.data_queue) > 0:
             rcvd_message = self.data_queue.pop()
             logger.debug("A message pop from the queue : %s", rcvd_message)
@@ -175,22 +234,6 @@ class WCClient:
         else:
             msg_ready = (None, "", [])
         return msg_ready
-
-    def reply(self, req_id, result):
-        """Send a RPC response to the webapp through the relay."""
-        payload_bin = json_rpc_pack_response(req_id, result)
-        datafull = {
-            "topic": self.app_peer_id,
-            "type": "pub",
-            "payload": json_encode(self.enc_channel.encrypt_payload(payload_bin)),
-        }
-        logger.debug(
-            "--> WalletConnect Replying id[%i] : result=%s\nRaw message: %s",
-            req_id,
-            result,
-            payload_bin,
-        )
-        self.write(datafull)
 
     def subscribe(self, peer_uuid):
         """Start listening to a given peer."""
@@ -234,10 +277,254 @@ class WCClient:
         """Send the sessionRequest result."""
         session_request_result = {
             "peerId": self.wallet_id,
-            "peerMeta": wallet_metadata,
+            "peerMeta": self.wallet_metadata,
             "approved": True,
             "chainId": chain_id,
             "accounts": [account_address],
         }
         logger.debug("Replying the sessionRequest.")
         self.reply(msg_id, session_request_result)
+
+
+class WCv2Client(WCClient):
+    """WalletConnect v2 wallet client connected to a relay with WebSocket."""
+
+    host_relay = "relay.walletconnect.com"
+
+    def __init__(self, ws_url, topic, pubkey):
+        """Create a WalletConnect v2 client from parameters.
+        Call open_session immediately after to get the session request info.
+        """
+        # Chain ID is managed outside the walletconnect classes
+        # Shall be managed by the user / webapp
+        super().__init__()
+        logger.debug("Opening a WalletConnect v2 client with %s", ws_url)
+        self.relay_url = self.host_relay
+        try:
+            self.websock = WebSocketClient(ws_url)
+            self.data_queue = self.websock.received_messages
+        except Exception as exc:
+            logger.error(
+                "Error during device initialization : %s", str(exc), exc_info=exc
+            )
+            raise WCClientException(exc) from exc
+        logger.debug("wc v2 URI and project id accepted")
+        # Key for Pairing
+        self.peer_pubkey = pubkey
+        self.proposal_topic = topic
+
+    @classmethod
+    def from_wc2_uri(cls, wc_uri_str):
+        """Create a WalletConnect client from wc v2 URI"""
+        logger.debug("URI WC version 2 decoding")
+        # wc URI already filtered for v2 if called from WCClient.from_wc_uri
+        urla = urlparse(wc_uri_str)
+        query_string = parse_qs(urla.query)
+        if urla.scheme != "wc":
+            raise WCClientInvalidOption("Bad wc URI provided\nMust be : wc:xxxx...")
+        if urla.path[-2:] != "@2":
+            raise WCClientInvalidOption("Bad v2 data received in URI")
+        handshake_topic = urla.path[:-2]
+        if (
+            query_string.get("publicKey") is None
+            or len(query_string["publicKey"]) == 0
+        ):
+            raise WCClientInvalidOption("publickey not found in wc v2 URI")
+        pub_key = query_string["publicKey"][0]
+        if len(pub_key) != 64:
+            # ToDo also check hex lower
+            raise WCClientInvalidOption("Invalid publickey in wc v2 URI")
+        logger.debug(
+            "wc v2 URI provided decoded successfully, "
+            "now starting the WalletConnect client"
+        )
+        if not cls.project_id:
+            raise WCClientInvalidOption(
+                "v2 walletConnect must been set up with WCClient.set_project_id(id)"
+            )
+        wsurl = (
+            f"https://{cls.host_relay}/?env=desktop&projectId={cls.project_id}"
+            "&protocol=wc&version=2"
+        )
+        return cls(wsurl, handshake_topic, pub_key)
+
+    def get_json_response(self):
+        """Read the first data object available in the receive queue messages.
+        Non-blocking, so return None if no data has been received.
+        """
+        # Check if socket was disconnected
+        if not hasattr(self.websock, "ssocket"):
+            logger.debug("Reconnecting WebSocket")
+            self.reconnect()
+        logger.debug("Get Data, full messages queue : %s", str(self.data_queue))
+        if len(self.data_queue) > 0:
+            rcvd_message = self.data_queue.pop()
+            logger.debug("A message pop from the queue : %s", rcvd_message)
+            if rcvd_message and rcvd_message.startswith('{"'):
+                request_received = json_rpc_unpack_response(rcvd_message)
+                logger.debug("Result received : %s", request_received)
+                return request_received
+        return None
+
+    def get_data(self):
+        """Read the first data available in the receive queue messages.
+        Non-blocking, so return None if no data has been received.
+        """
+        # Check if socket was disconnected
+        if not hasattr(self.websock, "ssocket"):
+            logger.debug("Reconnecting WebSocket")
+            self.reconnect()
+        if len(self.data_queue) > 0:
+            rcvd_message = self.data_queue.pop()
+            logger.debug("A message pop from the queue : %s", rcvd_message)
+            if rcvd_message and rcvd_message.startswith('{"'):
+                msg_sub = json_rpc_unpack(rcvd_message)
+                if msg_sub[1] == "waku_subscription":
+                    request_received = self.enc_channel.decrypt_payload(
+                        msg_sub[2]["data"]["message"]
+                    )
+                    logger.debug("Request message decrypted : %s", request_received)
+                    return request_received
+        return None
+
+    def get_message(self):
+        """
+        Like get data but filter the messages and fully decode them.
+        Return : (id, method, params) or (None, "", [])
+        Use like a pump : call get_message() until empty response,
+        because it reads a message from the receiving bucket.
+        Non-blocking, so returns (None, "", []) if no data has been received.
+        """
+        rcvd_data = self.get_data()
+        if rcvd_data and isinstance(rcvd_data, str) and rcvd_data.startswith('{"'):
+            # return (id, method, params)
+            logger.debug("Request query decoded : %s", rcvd_data)
+            req = json_rpc_unpack(rcvd_data)
+            return req
+        return (None, "", [])
+
+    def wait_for_response(self, resp_type):
+        """Wait for a JSON-RPC response."""
+        # Waiting for publish ack
+        logger.debug("Waiting for %s ack.", resp_type)
+        cyclew = 0
+        while cyclew < CYCLES_TIMEOUT:
+            sleep(UNIT_WAITING_TIME)
+            read_data = self.get_json_response()
+            if read_data:
+                logger.debug("<-- WalletConnect response read : %s", read_data)
+                break
+            cyclew += 1
+        if cyclew == CYCLES_TIMEOUT:
+            self.close()
+            raise WCClientException(f"{resp_type} timeout")
+
+    def subscribe(self, peer_uuid):
+        """Start listening to a given peer."""
+        logger.debug("Sending a subscription request for %s.", peer_uuid)
+        data = rpc_query("waku_subscribe", {"topic": peer_uuid})
+        self.write(data)
+
+    def publish(self, topic, message):
+        """Send a message into a topic id channel."""
+        logger.debug("Sending a publish request for %s.", topic)
+        data = rpc_query(
+            "waku_publish", {"topic": topic, "message": message, "ttl": 86400}
+        )
+        self.write(data)
+
+    def open_session(self):
+        """Start a WalletConnect session : read session request message.
+        Return : (message RPC ID, chain ID, peerMeta data object).
+        Or throw WalletConnectClientException("sessionRequest timeout")
+        after GLOBAL_TIMEOUT seconds.
+        """
+        # Pairing Keys
+        keyassym = KeyAgreement()
+        pubkey = keyassym.get_pubkey()
+        keyassym.compute_shared_key(self.peer_pubkey)
+        chat_topic = keyassym.derive_topic()
+        keys = keyassym.derive_enc_key()
+        self.enc_channel = EncryptedTunnelv2(pubkey, keys[0], keys[1])
+        self.subscribe(chat_topic)
+        self.wait_for_response("Chat subcription")
+        now_epoch = int(time())
+        respo = rpc_query(
+            "wc_pairingApprove",
+            {
+                "relay": {"protocol": "waku"},
+                "responder": {"publicKey": pubkey.hex()},
+                "expiry": now_epoch + 86400,
+                "state": {"metadata": self.wallet_metadata},
+            },
+        )
+        msgb = json_encode(respo).encode("utf8").hex()
+        self.publish(self.proposal_topic, msgb)
+        self.wait_for_response("Pairing Approve")
+
+        # Waiting for settlement
+        logger.debug("Waiting for WalletConnect settlement.")
+        cyclew = 0
+        while cyclew < CYCLES_TIMEOUT:
+            sleep(UNIT_WAITING_TIME)
+            read_data = self.get_message()
+            if read_data[0] is not None:
+                logger.debug("<-- WalletConnect message read : %s", read_data)
+                logger.debug("RPC result=%s", read_data)
+                if read_data[1] == "wc_pairingPayload":
+                    logger.debug("pairing payload received")
+                    if read_data[2]["request"]["method"] == "wc_sessionPropose":
+                        logger.debug("session propose received")
+                        iparams = read_data[2]["request"]["params"]
+                        if (
+                            iparams["signal"]["method"] == "pairing"
+                            and iparams["signal"]["params"]["topic"] == chat_topic
+                        ):
+                            logger.debug("chat topic checked")
+                            self.peer_pubkey = iparams["proposer"]["publicKey"]
+                            pairing_rpc_id = iparams["topic"]
+                            peer_meta = iparams["proposer"]["metadata"]
+                            chain_id = iparams["permissions"]["blockchain"]["chains"]
+                break
+            cyclew += 1
+        if cyclew == CYCLES_TIMEOUT:
+            self.close()
+            raise WCClientException("settlement timeout")
+
+        return pairing_rpc_id, chain_id, peer_meta
+
+    def reply_session_request(self, msg_id, chain_id, account_address):
+        """Send the sessionRequest approval."""
+        # msg_id is the topic id
+
+        # New session key
+        keyassym = KeyAgreement()
+        pubkey = keyassym.get_pubkey()
+
+        now_epoch = int(time())
+        respo = rpc_query(
+            "wc_sessionApprove",
+            {
+                "relay": {"protocol": "waku"},
+                "responder": {
+                    "publicKey": pubkey.hex(),
+                    "metadata": self.wallet_metadata,
+                },
+                "expiry": now_epoch + 86400,
+                "state": {"accounts": [f"eip155:{chain_id}:{account_address}"]},
+            },
+        )
+        msgb = self.enc_channel.encrypt_payload(json_encode(respo))
+        logger.debug("Replying the session proposal.")
+
+        # Recompute keys and topic for the session
+        keyassym.compute_shared_key(self.peer_pubkey)
+        session_topic = keyassym.derive_topic()
+        keys = keyassym.derive_enc_key()
+        self.enc_channel = EncryptedTunnelv2(pubkey, keys[0], keys[1])
+        self.subscribe(session_topic)
+        self.wait_for_response("Session subcription")
+
+        # Finally send the session approve
+        self.publish(msg_id, msgb)
+        self.wait_for_response("Session approval")

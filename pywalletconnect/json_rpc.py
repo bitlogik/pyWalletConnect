@@ -33,6 +33,36 @@ def json_encode(dataobj):
 # The wallet is a JSON-RPC service in the WalletConnect standard
 
 
+id_counter = 0
+
+
+def rpc_query(method, params):
+    """Build a JSON-RPC query object."""
+    global id_counter
+    id_counter += 1
+    return {
+        "jsonrpc": "2.0",
+        "id": id_counter,
+        "method": method,
+        "params": params,
+    }
+
+
+def json_rpc_unpack_response(raw_response):
+    """Decode JSON-RPC raw bytes response and return result."""
+    try:
+        resp_obj = loads(raw_response)
+    except Exception as exc:
+        raise Exception(f"Error : not JSON response : {raw_response}") from exc
+    if resp_obj["jsonrpc"] != "2.0":
+        raise Exception(f"Server is not JSONRPC 2.0 but {resp_obj.jsonrpc}")
+    if "error" in resp_obj:
+        raise Exception(resp_obj["error"]["message"])
+    if not "result" in resp_obj:
+        raise Exception(f"No result in response {raw_response}")
+    return resp_obj["result"]
+
+
 def json_rpc_pack_response(idmsg, result_obj):
     """Build a JSON-RPC response."""
     request_obj = {
