@@ -64,12 +64,15 @@ class WebSocketClient:
         try:
             self.ssocket = TLSsocket(ws_url.hostname, port_num)
             self.websock_conn = WSConnection(ConnectionType.CLIENT)
+            query_path = ws_url.path
+            if ws_url.query:
+                query_path += "?" + ws_url.query
             logger.debug(
                 "Connecting to WebSocket Host=%s PathTarget=%s",
                 ws_url.hostname,
-                ws_url.path,
+                query_path,
             )
-            self.send(Request(host=ws_url.hostname, target=ws_url.path or "/"))
+            self.send(Request(host=ws_url.hostname, target=query_path or "/"))
             cyclew = 0
             while cyclew < CYCLES_TIMEOUT:
                 logger.debug("Waiting WebSocket handshake : %ith loop.", cyclew + 1)
