@@ -282,6 +282,16 @@ class WCv1Client(WCClient):
         app_chain_id = query_params[0]["chainId"]
         return msg_id, app_chain_id, query_params[0]["peerMeta"]
 
+    def reject_session_request(self, msg_id):
+        """Send the sessionRequest rejection."""
+        session_request_reject = {
+            "peerId": self.wallet_id,
+            "peerMeta": self.wallet_metadata,
+            "approved": False,
+        }
+        logger.debug("Denying the sessionRequest.")
+        self.reply(msg_id, session_request_reject)
+
     def reply_session_request(self, msg_id, chain_id, account_address):
         """Send the sessionRequest result."""
         session_request_result = {
@@ -291,7 +301,7 @@ class WCv1Client(WCClient):
             "chainId": chain_id,
             "accounts": [account_address],
         }
-        logger.debug("Replying the sessionRequest.")
+        logger.debug("Approving the sessionRequest.")
         self.reply(msg_id, session_request_result)
 
 
@@ -321,6 +331,8 @@ class WCv2Client(WCClient):
         # Key for Pairing
         self.peer_pubkey = pubkey
         self.proposal_topic = topic
+        # Keep track of subcriptions topics for each id
+        self.subscriptions = {}
 
     @classmethod
     def from_wc2_uri(cls, wc_uri_str):
@@ -334,10 +346,7 @@ class WCv2Client(WCClient):
         if urla.path[-2:] != "@2":
             raise WCClientInvalidOption("Bad v2 data received in URI")
         handshake_topic = urla.path[:-2]
-        if (
-            query_string.get("publicKey") is None
-            or len(query_string["publicKey"]) == 0
-        ):
+        if query_string.get("publicKey") is None or len(query_string["publicKey"]) == 0:
             raise WCClientInvalidOption("publickey not found in wc v2 URI")
         pub_key = query_string["publicKey"][0]
         if len(pub_key) != 64:
@@ -389,11 +398,13 @@ class WCv2Client(WCClient):
             if rcvd_message and rcvd_message.startswith('{"'):
                 msg_sub = json_rpc_unpack(rcvd_message)
                 if msg_sub[1] == "waku_subscription":
-                    request_received = self.enc_channel.decrypt_payload(
-                        msg_sub[2]["data"]["message"]
-                    )
-                    logger.debug("Request message decrypted : %s", request_received)
-                    return request_received
+                    # Filter if we are actually subscribed to this topic
+                    if msg_sub[2]["id"] in self.subscriptions.values():
+                        request_received = self.enc_channel.decrypt_payload(
+                            msg_sub[2]["data"]["message"]
+                        )
+                        logger.debug("Request message decrypted : %s", request_received)
+                        return request_received
         return None
 
     def get_message(self):
@@ -422,17 +433,29 @@ class WCv2Client(WCClient):
             read_data = self.get_json_response()
             if read_data:
                 logger.debug("<-- WalletConnect response read : %s", read_data)
-                break
+                return read_data
             cyclew += 1
         if cyclew == CYCLES_TIMEOUT:
             self.close()
             raise WCClientException(f"{resp_type} timeout")
 
-    def subscribe(self, peer_uuid):
-        """Start listening to a given peer."""
-        logger.debug("Sending a subscription request for %s.", peer_uuid)
-        data = rpc_query("waku_subscribe", {"topic": peer_uuid})
+    def subscribe(self, topic_id):
+        """Start listening to a given topic."""
+        logger.debug("Sending a subscription request for %s.", topic_id)
+        data = rpc_query("waku_subscribe", {"topic": topic_id})
         self.write(data)
+        subscription_id = self.wait_for_response("Topic subcription")
+        self.subscriptions[topic_id] = subscription_id
+
+    def unsubscribe(self, topic_id):
+        """Stop listening to a given topic."""
+        logger.debug("Sending an unsubscribe request for %s.", topic_id)
+        data = rpc_query(
+            "waku_unsubscribe", {"topic": topic_id, "id": self.subscriptions[topic_id]}
+        )
+        self.write(data)
+        self.wait_for_response("Topic leaving")
+        del self.subscriptions[topic_id]
 
     def publish(self, topic, message):
         """Send a message into a topic id channel."""
@@ -455,8 +478,9 @@ class WCv2Client(WCClient):
         chat_topic = keyassym.derive_topic()
         keys = keyassym.derive_enc_key()
         self.enc_channel = EncryptedTunnelv2(pubkey, keys[0], keys[1])
+        # Current topic for reconnect method and session unsub
+        self.wallet_id = chat_topic
         self.subscribe(chat_topic)
-        self.wait_for_response("Chat subcription")
         now_epoch = int(time())
         respo = rpc_query(
             "wc_pairingApprove",
@@ -502,6 +526,30 @@ class WCv2Client(WCClient):
 
         return pairing_rpc_id, chain_id, peer_meta
 
+    def reject_session_request(self, msg_id):
+        """Send the sessionRequest rejection."""
+        # msg_id is the topic id
+        respo_neg = rpc_query(
+            "wc_sessionReject",
+            {
+                "reason": {"code": 1601, "message": "User rejected the session."},
+            },
+        )
+        msgbn = self.enc_channel.encrypt_payload(json_encode(respo_neg))
+        logger.debug("Replying the session rejection.")
+        self.publish(msg_id, msgbn)
+        self.wait_for_response("Session rejection")
+        pair_delete = rpc_query(
+            "wc_pairingDelete",
+            {
+                "reason": {"code": 1605, "message": "Pairing deleted"},
+            },
+        )
+        msgbp = self.enc_channel.encrypt_payload(json_encode(respo_neg))
+        logger.debug("Sending pairing deletion.")
+        self.publish(msg_id, msgbp)
+        self.wait_for_response("Pairing deletion")
+
     def reply_session_request(self, msg_id, chain_id, account_address):
         """Send the sessionRequest approval."""
         # msg_id is the topic id
@@ -524,15 +572,23 @@ class WCv2Client(WCClient):
             },
         )
         msgb = self.enc_channel.encrypt_payload(json_encode(respo))
-        logger.debug("Replying the session proposal.")
+        logger.debug("Approving the session proposal.")
 
         # Recompute keys and topic for the session
         keyassym.compute_shared_key(self.peer_pubkey)
         session_topic = keyassym.derive_topic()
         keys = keyassym.derive_enc_key()
+
+        # Unsubscribe the old propose pairing topic
+        self.unsubscribe(self.wallet_id)
+        # For reconnect method
+        self.wallet_id = session_topic
+
+        # Enforce new keys
         self.enc_channel = EncryptedTunnelv2(pubkey, keys[0], keys[1])
+
+        # Subscribe to the session topic
         self.subscribe(session_topic)
-        self.wait_for_response("Session subcription")
 
         # Finally send the session approve
         self.publish(msg_id, msgb)
