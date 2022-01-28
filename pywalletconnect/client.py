@@ -195,7 +195,6 @@ class WCv1Client(WCClient):
         if query_string.get("key") is None:
             raise WCClientInvalidOption("No key option in URI")
         symkey_hex = query_string["key"][0]
-        print(symkey_hex)
         if len(symkey_hex) % 2 != 0 or len(symkey_hex) // 2 != WC_AES_KEY_SIZE:
             raise WCClientInvalidOption("Bad key data format in URI")
         try:
@@ -379,9 +378,13 @@ class WCv2Client(WCClient):
             rcvd_message = self.data_queue.pop()
             logger.debug("A message pop from the queue : %s", rcvd_message)
             if rcvd_message and rcvd_message.startswith('{"'):
-                request_received = json_rpc_unpack_response(rcvd_message)
-                logger.debug("Result received : %s", request_received)
-                return request_received
+                try:
+                    request_received = json_rpc_unpack_response(rcvd_message)
+                    logger.debug("Result received : %s", request_received)
+                    return request_received
+                except:
+                    # if RPC query, re-insert in queue
+                    self.data_queue.insert(0, rcvd_message)
         return None
 
     def get_data(self):
@@ -414,12 +417,18 @@ class WCv2Client(WCClient):
         Use like a pump : call get_message() until empty response,
         because it reads a message from the receiving bucket.
         Non-blocking, so returns (None, "", []) if no data has been received.
+        Return empty method and params for wc_sessionPing, they're are reponded at this level.
+        So filter get_message calls with 'id is None', means no more message left.
         """
         rcvd_data = self.get_data()
         if rcvd_data and isinstance(rcvd_data, str) and rcvd_data.startswith('{"'):
             # return (id, method, params)
             logger.debug("Request query decoded : %s", rcvd_data)
             req = json_rpc_unpack(rcvd_data)
+            # Auto session ping reply
+            if req[1] == "wc_sessionPing":
+                self.reply(req[0], True)
+                return (req[0], "", [])
             return req
         return (None, "", [])
 
@@ -439,6 +448,13 @@ class WCv2Client(WCClient):
             self.close()
             raise WCClientException(f"{resp_type} timeout")
 
+    def reply(self, req_id, result):
+        """Send a RPC response to the webapp through the relay."""
+        payload_bin = json_rpc_pack_response(req_id, result)
+        msgbp = self.enc_channel.encrypt_payload(payload_bin, None)
+        logger.debug("Sending result reply.")
+        self.publish(self.wallet_id, msgbp, "Sending result")
+    
     def subscribe(self, topic_id):
         """Start listening to a given topic."""
         logger.debug("Sending a subscription request for %s.", topic_id)
@@ -457,13 +473,14 @@ class WCv2Client(WCClient):
         self.wait_for_response("Topic leaving")
         del self.subscriptions[topic_id]
 
-    def publish(self, topic, message):
+    def publish(self, topic, message, log_msg=""):
         """Send a message into a topic id channel."""
         logger.debug("Sending a publish request for %s.", topic)
         data = rpc_query(
             "waku_publish", {"topic": topic, "message": message, "ttl": 86400}
         )
         self.write(data)
+        self.wait_for_response(log_msg)
 
     def open_session(self):
         """Start a WalletConnect session : read session request message.
@@ -487,13 +504,12 @@ class WCv2Client(WCClient):
             {
                 "relay": {"protocol": "waku"},
                 "responder": {"publicKey": pubkey.hex()},
-                "expiry": now_epoch + 86400,
+                "expiry": now_epoch + 14400,
                 "state": {"metadata": self.wallet_metadata},
             },
         )
         msgb = json_encode(respo).encode("utf8").hex()
-        self.publish(self.proposal_topic, msgb)
-        self.wait_for_response("Pairing Approve")
+        self.publish(self.proposal_topic, msgb, "Pairing Approve")
 
         # Waiting for settlement
         logger.debug("Waiting for WalletConnect settlement.")
@@ -537,8 +553,8 @@ class WCv2Client(WCClient):
         )
         msgbn = self.enc_channel.encrypt_payload(json_encode(respo_neg))
         logger.debug("Replying the session rejection.")
-        self.publish(msg_id, msgbn)
-        self.wait_for_response("Session rejection")
+        self.publish(msg_id, msgbn, "Session rejection")
+        # Should be published on an old topic ?
         pair_delete = rpc_query(
             "wc_pairingDelete",
             {
@@ -547,8 +563,7 @@ class WCv2Client(WCClient):
         )
         msgbp = self.enc_channel.encrypt_payload(json_encode(respo_neg))
         logger.debug("Sending pairing deletion.")
-        self.publish(msg_id, msgbp)
-        self.wait_for_response("Pairing deletion")
+        self.publish(msg_id, msgbp, "Pairing deletion")
 
     def reply_session_request(self, msg_id, chain_id, account_address):
         """Send the sessionRequest approval."""
@@ -567,7 +582,7 @@ class WCv2Client(WCClient):
                     "publicKey": pubkey.hex(),
                     "metadata": self.wallet_metadata,
                 },
-                "expiry": now_epoch + 86400,
+                "expiry": now_epoch + 14400,
                 "state": {"accounts": [f"eip155:{chain_id}:{account_address}"]},
             },
         )
@@ -591,5 +606,4 @@ class WCv2Client(WCClient):
         self.subscribe(session_topic)
 
         # Finally send the session approve
-        self.publish(msg_id, msgb)
-        self.wait_for_response("Session approval")
+        self.publish(msg_id, msgb, "Session approval")

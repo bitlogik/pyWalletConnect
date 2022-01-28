@@ -139,11 +139,16 @@ class EncryptedTunnelv2:
         self.mackey = mac_key
         self.pubkey = pubkey
 
-    def encrypt_payload(self, message_str):
-        """Encrypt a string message into a hex message.
+    def encrypt_payload(self, message_str, encod="utf8"):
+        """Encrypt a string or bytes message into a hex message.
+        If encod is None or "", the message is read as binary bytes.
         iv, publicKey, mac and cipherText
         """
-        enc_msg_iv = encrypt_aes(self.enckey, message_str.encode("utf8"))
+        if encod:
+            message = message_str.encode(encod)
+        else:
+            message = message_str
+        enc_msg_iv = encrypt_aes(self.enckey, message)
         mac_data = hmac_sha256(
             self.mackey, enc_msg_iv[1] + self.pubkey + enc_msg_iv[0]
         ).hex()
