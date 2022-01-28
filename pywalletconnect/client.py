@@ -17,7 +17,7 @@
 """WalletConnect wallet client for pyWalletConnect"""
 
 
-from urllib.parse import unquote, urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs
 from json import loads
 from logging import getLogger
 from re import compile as regex_compile
@@ -55,7 +55,7 @@ class WCClientInvalidOption(Exception):
 class WCClient:
     """WalletConnect wallet v1 and v2 base client."""
 
-    wc_uri_pattern = regex_compile(r"^wc:(.+)@(\d)\?bridge=(.+)&key=(.+)$")
+    wc_uri_pattern = regex_compile(r"^wc:(.+)@(\d)\?(.+)$")
     project_id = ""
     wallet_metadata = {
         "description": f"pyWalletConnect v{VERSION} by BitLogiK",
@@ -90,9 +90,12 @@ class WCClient:
     @classmethod
     def from_wc_uri(cls, wc_uri_str):
         """Create a WalletConnect client from wc URI"""
+        found = WCClient.wc_uri_pattern.findall(wc_uri_str)
+        if not found:
+            raise WCClientInvalidOption("Bad wc URI provided\nMust be : wc:xxxx...")
         if wc_uri_str.find("@1?") >= 0:
             # v1
-            return WCv1Client.from_wc1_uri(wc_uri_str)
+            return WCv1Client.from_wc1_data(found[0])
         if wc_uri_str.find("@2?") >= 0:
             # Is it a V2 ?
             return WCv2Client.from_wc2_uri(wc_uri_str)
@@ -179,20 +182,26 @@ class WCv1Client(WCClient):
         self.subscribe(topic)
 
     @classmethod
-    def from_wc1_uri(cls, wc_uri_str):
+    def from_wc1_data(cls, wc_data):
         """Create a WalletConnect client from wc v1 URI"""
-        found = WCClient.wc_uri_pattern.findall(wc_uri_str)
-        if not found:
-            raise WCClientInvalidOption("Bad wc URI provided\nMust be : wc:xxxx...")
-        wc_data = found[0]
-        if len(wc_data) != 4:
-            raise WCClientInvalidOption("Bad data received in URI")
+        if len(wc_data) != 3:
+            raise WCClientInvalidOption("Bad data received in URI WC v1")
         handshake_topic = wc_data[0]
         wc_ver = wc_data[1]
-        bridge_url = unquote(wc_data[2])
-        if len(wc_data[3]) % 2 != 0 or len(wc_data[3]) // 2 != WC_AES_KEY_SIZE:
+        query_string = parse_qs(wc_data[2])
+        if query_string.get("bridge") is None:
+            raise WCClientInvalidOption("No bridge option in URI")
+        bridge_url = query_string["bridge"][0]
+        if query_string.get("key") is None:
+            raise WCClientInvalidOption("No key option in URI")
+        symkey_hex = query_string["key"][0]
+        print(symkey_hex)
+        if len(symkey_hex) % 2 != 0 or len(symkey_hex) // 2 != WC_AES_KEY_SIZE:
             raise WCClientInvalidOption("Bad key data format in URI")
-        sym_key = bytes.fromhex(wc_data[3])
+        try:
+            sym_key = bytes.fromhex(symkey_hex)
+        except ValueError as exc:
+            raise WCClientInvalidOption("Bad hex key data format in URI") from exc
         if wc_ver != "1":
             raise WCClientInvalidOption("Bad WalletConnect version. Only supports v1.")
         logger.debug(
