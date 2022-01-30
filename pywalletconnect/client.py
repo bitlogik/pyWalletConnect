@@ -153,7 +153,7 @@ class WCClient:
         )
         self.write(datafull)
 
-    def subscribe(self, peer_uuid):
+    def subscribe(self, topic_id):
         """Abstract class for topic subscribe."""
         raise NotImplementedError
 
@@ -245,10 +245,10 @@ class WCv1Client(WCClient):
             msg_ready = (None, "", [])
         return msg_ready
 
-    def subscribe(self, peer_uuid):
+    def subscribe(self, topic_id):
         """Start listening to a given peer."""
-        logger.debug("Sending a subscription request for %s.", peer_uuid)
-        data = {"topic": peer_uuid, "type": "sub", "payload": ""}
+        logger.debug("Sending a subscription request for %s.", topic_id)
+        data = {"topic": topic_id, "type": "sub", "payload": ""}
         self.write(data)
 
     def open_session(self):
@@ -319,7 +319,6 @@ class WCv2Client(WCClient):
         # Shall be managed by the user / webapp
         super().__init__()
         logger.debug("Opening a WalletConnect v2 client with %s", ws_url)
-        self.relay_url = self.host_relay
         try:
             self.websock = WebSocketClient(ws_url)
             self.data_queue = self.websock.received_messages
@@ -391,7 +390,7 @@ class WCv2Client(WCClient):
                     request_received = json_rpc_unpack_response(rcvd_message)
                     logger.debug("Result received : %s", request_received)
                     return request_received
-                except:
+                except Exception:
                     # if RPC query, re-insert in queue
                     self.data_queue.insert(0, rcvd_message)
         return None
@@ -426,8 +425,9 @@ class WCv2Client(WCClient):
         Use like a pump : call get_message() until empty response,
         because it reads a message from the receiving bucket.
         Non-blocking, so returns (None, "", []) if no data has been received.
-        Return empty method and params for wc_sessionPing, they're are reponded at this level.
-        So filter get_message calls with 'id is None', means no more message left.
+        Return empty method and params for wc_sessionPing, pings are reponded here
+        at this level. So filter get_message calls with 'id is None', means no more
+        message left.
         """
         rcvd_data = self.get_data()
         if rcvd_data and isinstance(rcvd_data, str) and rcvd_data.startswith('{"'):

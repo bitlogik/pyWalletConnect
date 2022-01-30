@@ -58,7 +58,7 @@ def json_rpc_unpack_response(raw_response):
         raise Exception(f"Server is not JSONRPC 2.0 but {resp_obj.jsonrpc}")
     if "error" in resp_obj:
         raise Exception(resp_obj["error"]["message"])
-    if not "result" in resp_obj:
+    if "result" not in resp_obj:
         raise Exception(f"No result in response {raw_response}")
     return resp_obj["result"]
 

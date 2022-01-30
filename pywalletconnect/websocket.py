@@ -186,4 +186,4 @@ class WebSocketClient:
                         self.partial_binmessages = []
 
                 else:
-                    Exception("Unknown WebSocket event : {!r}".format(event))
+                    Exception(f"Unknown WebSocket event : {event}")
