@@ -25,7 +25,7 @@ setup(
     python_requires=">=3.6",
     install_requires=[
         "cryptography>=3.3",
-        "wsproto>=0.15",
+        "wsproto==1.0.0",
     ],
     package_data={},
     include_package_data=False,
