@@ -49,6 +49,8 @@ Basic example :
 from pywalletconnect import WCClient, WCClientInvalidOption
 # Input the wc URI
 string_uri = input("Input the WalletConnect URI : ")
+WCClient.set_wallet_metadata(WALLET_METADATA)  # Optional, else identify pyWalletConnect as wallet
+WCClient.set_project_id(WALLETCONNECT_PROJECT_ID)  # Required for v2
 try:
     wallet_dapp = WCClient.from_wc_uri(string_uri)
 except WCClientInvalidOption as exc:
@@ -142,8 +144,16 @@ See also the [RPC methods in WalletConnect](https://docs.walletconnect.org/v/1.0
 
 ## Interface methods of WCClient
 
+`WCClient.set_wallet_metadata( wallet_metadata )`  
+Class method to set the wallet metadata as object (v2). See WalletConnect standard for the format.  
+Optional. If not provided, when v2, it sends the default pyWalletConnect metadata as wallet identification.
+
+`WCClient.set_project_id( project_id )`  
+Class method to set the WalletConnect project id. This is mandatory to use a project id when  
+using WC v2 with the official wafu bridge relay.
+
 `WCClient.from_wc_uri( wc_uri_str )`  
-Create a WalletConnect wallet client from a wc v1 or v2 URI.  
+Create a WalletConnect wallet client from a wc v1 or v2 URI. (class method constructor)  
 *wc_uri_str* : the wc full EIP1328 URI provided by the Dapp.  
 You need to call *open_session* immediately after to get the session request info.
 

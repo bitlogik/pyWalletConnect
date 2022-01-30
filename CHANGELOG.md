@@ -7,6 +7,7 @@
 * New logo, used for v2 default
 * Add session request rejection method
 * Add WalletConnect v2 (experimental)
+* Can change wallet metadata and project id (for v2)
 
 ## 1.1.4
 
