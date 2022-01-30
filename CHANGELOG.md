@@ -4,6 +4,7 @@
 
 ## 1.2.0
 
+* New logo, used for v2 default
 * Add session request rejection method
 * Add WalletConnect v2 (experimental)
 

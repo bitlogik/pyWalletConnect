@@ -1,6 +1,7 @@
 
 # pyWalletConnect
 
+![pyWalletConnect logo](logo.png)
 
 ### A WalletConnect implementation for wallets in Python
 

@@ -60,7 +60,7 @@ class WCClient:
     wallet_metadata = {
         "description": f"pyWalletConnect v{VERSION} by BitLogiK",
         "url": "https://github.com/bitlogik/pyWalletConnect",
-        "icons": [""],
+        "icons": ["https://raw.githubusercontent.com/bitlogik/pyWalletConnect/master/logo.png"],
         "name": "pyWalletConnect",
     }
 
