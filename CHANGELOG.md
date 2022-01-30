@@ -1,6 +1,12 @@
 
 # pyWalletConnect changes log
 
+
+## 1.2.0
+
+* Add session request rejection method
+* Add WalletConnect v2 (experimental)
+
 ## 1.1.4
 
 * Explicitely reject WC v2
