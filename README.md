@@ -185,7 +185,7 @@ Or throws WalletConnectClientException("sessionRequest timeout")
 after 8 seconds and no sessionRequest received.
 
 `reply_session_request( msg_id, chain_id, account_address )`  
-Send the a session approval message, when user approved the connection session request in the wallet.  
+Send a session approval message, when user approved the connection session request in the wallet.  
 *msg_id* is the RPC id of the session approval request.
 
 `.reject_session_request( req_id )`  
