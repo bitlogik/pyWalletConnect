@@ -9,6 +9,8 @@ A Python3 library to link a wallet with a WalletConnect web3 app. This library c
 
 Thanks to WalletConnect, a Dapp is able to send JSON-RPC call requests to be handled by the Wallet, sign requests for transactions or messages remotely. Using WalletConnect, the wallet is a JSON-RPC service that the dapp can query through an encrypted tunnel and an online relay. This library is built for the wallet part, which establishes a link with the dapp and receives requests form a web3 app.
 
+WalletConnect version 2 support is experimental.
+
 pyWalletConnect manages automatically on its own all the WalletConnect stack :
 
 ```
