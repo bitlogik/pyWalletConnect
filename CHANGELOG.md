@@ -1,6 +1,14 @@
 
 # pyWalletConnect changes log
 
+
+## 1.2.0
+
+* New logo, used for v2 default
+* Add session request rejection method
+* Add WalletConnect v2 (experimental)
+* Can change wallet metadata and project id (for v2)
+
 ## 1.1.4
 
 * Explicitely reject WC v2
