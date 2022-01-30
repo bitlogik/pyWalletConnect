@@ -347,12 +347,19 @@ class WCv2Client(WCClient):
         if urla.path[-2:] != "@2":
             raise WCClientInvalidOption("Bad v2 data received in URI")
         handshake_topic = urla.path[:-2]
+        try:
+            int(handshake_topic, 16)
+        except ValueError as exc:
+            raise WCClientInvalidOption("Invalid hex topic in wc v2 URI") from exc
         if query_string.get("publicKey") is None or len(query_string["publicKey"]) == 0:
             raise WCClientInvalidOption("publickey not found in wc v2 URI")
         pub_key = query_string["publicKey"][0]
         if len(pub_key) != 64:
-            # ToDo also check hex lower
             raise WCClientInvalidOption("Invalid publickey in wc v2 URI")
+        try:
+            int(pub_key, 16)
+        except ValueError as exc:
+            raise WCClientInvalidOption("Invalid hex publickey in wc v2 URI") from exc
         logger.debug(
             "wc v2 URI provided decoded successfully, "
             "now starting the WalletConnect client"
