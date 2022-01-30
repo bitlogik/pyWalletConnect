@@ -60,7 +60,9 @@ class WCClient:
     wallet_metadata = {
         "description": f"pyWalletConnect v{VERSION} by BitLogiK",
         "url": "https://github.com/bitlogik/pyWalletConnect",
-        "icons": ["https://raw.githubusercontent.com/bitlogik/pyWalletConnect/master/logo.png"],
+        "icons": [
+            "https://raw.githubusercontent.com/bitlogik/pyWalletConnect/master/logo.png"
+        ],
         "name": "pyWalletConnect",
     }
 
@@ -454,7 +456,7 @@ class WCv2Client(WCClient):
         msgbp = self.enc_channel.encrypt_payload(payload_bin, None)
         logger.debug("Sending result reply.")
         self.publish(self.wallet_id, msgbp, "Sending result")
-    
+
     def subscribe(self, topic_id):
         """Start listening to a given topic."""
         logger.debug("Sending a subscription request for %s.", topic_id)
