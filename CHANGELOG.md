@@ -6,6 +6,7 @@
 
 * New logo, used for v2 default
 * Add session request rejection method
+* Remove no message from log
 * Add WalletConnect v2 (experimental)
 * Can change wallet metadata and project id (for v2)
 
