@@ -570,7 +570,7 @@ class WCv2Client(WCClient):
                 "reason": {"code": 1605, "message": "Pairing deleted"},
             },
         )
-        msgbp = self.enc_channel.encrypt_payload(json_encode(respo_neg))
+        msgbp = self.enc_channel.encrypt_payload(json_encode(pair_delete))
         logger.debug("Sending pairing deletion.")
         self.publish(msg_id, msgbp, "Pairing deletion")
 
