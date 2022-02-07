@@ -2,6 +2,10 @@
 # pyWalletConnect changes log
 
 
+## 1.2.2
+
+* Auto-disconnect from dapp when WCv1 object is deleted
+
 ## 1.2.0
 
 * New logo, used for v2 default
