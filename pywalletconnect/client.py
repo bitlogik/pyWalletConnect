@@ -69,10 +69,14 @@ class WCClient:
     def __init__(self):
         self.relay_url = ""
         self.wallet_id = ""
-        self.app_peer_id = ""
+        self.app_peer_id = None
         self.enc_channel = None
         self.websock = None
         self.data_queue = None
+
+    def __del__(self):
+        """Dying gasp and clean close"""
+        self.close()
 
     @classmethod
     def set_wallet_metadata(cls, wallet_metadata):
@@ -87,6 +91,24 @@ class WCClient:
     def close(self):
         """Close the WebSocket connection when deleting the object."""
         logger.debug("Closing WalletConnect link.")
+        if isinstance(self, WCv1Client):
+            # Auto disconnect if v1 and still connected
+            if hasattr(self.websock, "ssocket") and self.app_peer_id is not None:
+                logger.debug("WCv1 session close automatic message.")
+                close_param = {"approved": False, "chainId": 0, "accounts": []}
+                close_msg = rpc_query("wc_sessionUpdate", [close_param])
+                close_msg["id"] = int(time() * 100)
+                payload_bin = json_encode(close_msg).encode("utf8")
+                payload_enc = self.enc_channel.encrypt_payload(payload_bin)
+                datafull = {
+                    "topic": self.app_peer_id,
+                    "type": "pub",
+                    "payload": json_encode(payload_enc),
+                }
+                logger.debug("Sending a WCv1 close message.")
+                self.write(datafull)
+                sleep(0.15)
+                logger.debug("WCv1 close message sent.")
         self.websock.close()
 
     @classmethod

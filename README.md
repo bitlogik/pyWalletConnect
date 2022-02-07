@@ -90,6 +90,8 @@ Use a deamon thread timer for example, to call the `get_message()` method in a s
 
 Remember to keep track of the request id, as it is needed for `.reply(req_id, result)` ultimately when sending the processing result back to the dapp service. One way is to provide the id in argument in your processing methods. Also this can be done with global or shared parameters.
 
+When a WCClient object created from a WCv1 link is closed or deleted, it will send to the dapp a closing session message.
+
 ```python
 def process_sendtransaction(call_id, tx):
     # Processing the RPC query eth_sendTransaction
@@ -160,7 +162,7 @@ Create a WalletConnect wallet client from a wc v1 or v2 URI. (class method const
 You need to call *open_session* immediately after to get the session request info.
 
 `.close()`  
-Close the underlying WebSocket connection.
+Send a session close message (if v1), and close the underlying WebSocket connection.
 
 `.get_relay_url()`  
 Give the URL of the WebSocket relay bridge.
