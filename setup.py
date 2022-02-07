@@ -22,7 +22,7 @@ setup(
     author_email="contact@bitlogik.fr",
     url="https://github.com/bitlogik/pyWalletConnect",
     license="GPLv3",
-    python_requires=">=3.6",
+    python_requires=">=3.6.1",
     install_requires=[
         "cryptography>=3.3",
         "wsproto==1.0.0",
