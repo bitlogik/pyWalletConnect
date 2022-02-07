@@ -196,7 +196,7 @@ Send a session rejection message to the webapp (through the relay). *req_id* is 
 
 ## License
 
-Copyright (C) 2021  BitLogiK SAS
+Copyright (C) 2021-2022  BitLogiK SAS
 
 This program is free software: you can redistribute it and/or modify  
 it under the terms of the GNU General Public License as published by  
