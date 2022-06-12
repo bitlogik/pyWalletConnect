@@ -114,6 +114,8 @@ class WCClient:
     @classmethod
     def from_wc_uri(cls, wc_uri_str):
         """Create a WalletConnect client from wc URI"""
+        if not isinstance(wc_uri_str, str):
+            raise ValueError("wc_data must be string.")
         found = WCClient.wc_uri_pattern.findall(wc_uri_str)
         if not found:
             raise WCClientInvalidOption("Bad wc URI provided\nMust be : wc:xxxx...")
@@ -317,6 +319,10 @@ class WCv1Client(WCClient):
 
     def reply_session_request(self, msg_id, chain_id, account_address):
         """Send the sessionRequest result."""
+        if not isinstance(chain_id, int):
+            raise ValueError("chain_id argument must be integer.")
+        if not isinstance(account_address, str):
+            raise ValueError("account_address argument must be string.")
         session_request_result = {
             "peerId": self.wallet_id,
             "peerMeta": self.wallet_metadata,
