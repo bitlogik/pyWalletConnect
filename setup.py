@@ -6,14 +6,12 @@
 
 from setuptools import setup, find_packages
 
-from pywalletconnect.version import VERSION
-
 with open("README.md") as readme_file:
     readme = readme_file.read()
 
 setup(
     name="pyWalletConnect",
-    version=VERSION,
+    version="1.2.2",
     description="WalletConnect implementation for Python wallets",
     long_description=readme + "\n\n",
     long_description_content_type="text/markdown",
