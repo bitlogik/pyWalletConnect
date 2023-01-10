@@ -1,7 +1,7 @@
 # -*- coding: utf8 -*-
 
 # pyWalletConnect : Encrypted Tunnel
-# Copyright (C) 2021-2022 BitLogiK
+# Copyright (C) 2021-2023 BitLogiK
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,11 +17,14 @@
 """EncryptedTunnel for pyWalletConnect"""
 
 
+from base64 import standard_b64decode, standard_b64encode
 from json import loads
 from os import urandom
 
 from cryptography.hazmat.primitives import hashes, hmac, serialization
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.padding import PKCS7
 from cryptography.hazmat.primitives.asymmetric.x25519 import (
     X25519PrivateKey,
@@ -131,7 +134,7 @@ class EncryptedTunnel:
 
 
 class EncryptedTunnelv2:
-    """Provide an encryption tunnel for WalletConnect v2 messages."""
+    """Provide an encryption tunnel for WalletConnect Legacy v2 messages."""
 
     def __init__(self, pubkey, enc_key, mac_key):
         """Start a v2 tunnel."""
@@ -164,6 +167,47 @@ class EncryptedTunnelv2:
         return decrypt_aes(self.enckey, init_vector, enc_msg).decode("utf8")
 
 
+class EncryptedEnvelope:
+    """Provide an encryption tunnel for WalletConnect v2 messages."""
+
+    def __init__(self, key):
+        """Start a v2 envelope tunnel."""
+        self.key = ChaCha20Poly1305(key)
+
+    def encrypt_payload(self, message_str, encod="utf8", htype=0):
+        """Encrypt a string or bytes message into a b64 message.
+        If encod is None or "", the message is read as binary bytes.
+        Returns the serialized envelope already packed and encoded.
+        """
+        if encod:
+            message = message_str.encode(encod)
+        else:
+            message = message_str
+        if htype == 0:
+            nonce = urandom(12)
+        elif htype == 1:
+            raise NotImplementedError()
+        else:
+            raise ValueError("Envelope type shall be 0 or 1.")
+        enc_msg = bytes([0, *nonce]) + self.key.encrypt(nonce, message, None)
+        e = standard_b64encode(enc_msg).decode("ascii")
+        return e.rstrip("=")
+
+    def decrypt_payload(self, fullpayload_b64):
+        """Decrypt a payload object into a string message."""
+        payload = standard_b64decode(fullpayload_b64)
+        htype = payload[0]
+        pubkey = None
+        if htype == 0:
+            nonce = payload[1:13]
+        elif htype == 1:
+            raise NotImplementedError()
+        else:
+            raise ValueError("Envelope type shall be 0 or 1.")
+        clear_data = self.key.decrypt(nonce, payload[13:], None)
+        return clear_data.decode("utf8")
+
+
 # ---- Asymmetric key pair class for v2
 
 
@@ -193,6 +237,13 @@ class KeyAgreement:
         """
         hashk = sha2_512(self.shared_key)
         return hashk[:32], hashk[32:]
+
+    def hkdf_derive_enc_key(self):
+        # const hkdf = new HKDF(SHA256, sharedKey)
+        # const symKey = hkdf.expand(KEY_LENGTH)
+        # return toString(symKey, BASE16)
+        hkdf = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=None)
+        self.shared_key = hkdf.derive(self.shared_key)
 
     def derive_topic(self):
         """Topic for the next sequence."""
