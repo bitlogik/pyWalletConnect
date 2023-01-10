@@ -248,6 +248,10 @@ class WCv2Client(WCClient):
                             "Session propose incompatible protocol."
                         )
                     self.peer_pubkey = read_data[2]["proposer"]["publicKey"]
+                    if read_data[2]["requiredNamespaces"].get("eip155") is None:
+                        raise WCClientException(
+                            "Only compatible with EIP155 namespaces."
+                        )
                     self.proposed_methods = read_data[2]["requiredNamespaces"][
                         "eip155"
                     ]["methods"]
