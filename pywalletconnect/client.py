@@ -85,7 +85,7 @@ class WCClient:
 
     @classmethod
     def set_project_id(cls, project_id):
-        """Set the project id, mandatory for v2, using the waku official relay."""
+        """Set the project id, mandatory for v2, using the central official relay."""
         cls.project_id = project_id
 
     def close(self):
@@ -124,7 +124,9 @@ class WCClient:
             return WCv1Client.from_wc1_data(found[0])
         if wc_uri_str.find("@2?") >= 0:
             # Is it a V2 ?
-            return WCv2Client.from_wc2_uri(wc_uri_str)
+            if wc_uri_str.find("publicKey=") >= 0:
+                # v2 early waku
+                return WCv2ClientLegacy.from_wc2_uri(wc_uri_str)
         raise WCClientInvalidOption(
             "Only WalletConnect v1 and v2 are supported for now"
         )
@@ -334,8 +336,9 @@ class WCv1Client(WCClient):
         self.reply(msg_id, session_request_result)
 
 
-class WCv2Client(WCClient):
-    """WalletConnect v2 wallet client connected to a relay with WebSocket."""
+class WCv2ClientLegacy(WCClient):
+    """WalletConnect old v2 wallet client connected to a relay with WebSocket."""
+    # Initial v2 proposal with pairing and "waku" protocol
 
     host_relay = "relay.walletconnect.com"
 
@@ -346,7 +349,8 @@ class WCv2Client(WCClient):
         # Chain ID is managed outside the walletconnect classes
         # Shall be managed by the user / webapp
         super().__init__()
-        logger.debug("Opening a WalletConnect v2 client with %s", ws_url)
+        logger.debug("Opening a WalletConnect legacy-v2 client with %s", ws_url)
+        self.relay_url = ws_url
         try:
             self.websock = WebSocketClient(ws_url)
             self.data_queue = self.websock.received_messages
