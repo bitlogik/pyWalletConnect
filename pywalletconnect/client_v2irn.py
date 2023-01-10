@@ -1,10 +1,6 @@
 from urllib.parse import urlparse, parse_qs
-from json import loads
 from logging import getLogger
-from re import compile as regex_compile
-from threading import Timer
 from time import sleep, time
-from uuid import uuid4
 
 from .websocket import WebSocketClient, CYCLES_TIMEOUT, UNIT_WAITING_TIME
 from .enc_tunnel import (
@@ -49,13 +45,13 @@ class WCv2Client(WCClient):
             )
             raise WCClientException(exc) from exc
         logger.debug("wc v2 URI and project id accepted")
-        self.enc_channel = EncryptedEnvelope(symkey)
         # Key for Pairing
         self.local_keypair = None
         self.peer_pubkey = None
         self.proposal_topic = topic
-        # Keep track of subcriptions topics for each id
-        self.subscriptions = {}
+        # Keep track of subcriptions and key for topics
+        # has "subscription_id" and "secure_channel" keys
+        self.topics = {topic: {"secure_channel":EncryptedEnvelope(symkey)}}
 
     @classmethod
     def from_wc2_uri(cls, wc_uri_str):
@@ -132,11 +128,11 @@ class WCv2Client(WCClient):
                 msg_sub = json_rpc_unpack(rcvd_message)
                 if msg_sub[1] == "irn_subscription":
                     # Filter if we are actually subscribed to this topic
-                    if msg_sub[2]["id"] in self.subscriptions.values():
-                        request_received = self.enc_channel.decrypt_payload(
+                    if msg_sub[2]["data"]["topic"] in self.topics.keys():
+                        request_received = self.topics[msg_sub[2]["data"]["topic"]]["secure_channel"].decrypt_payload(
                             msg_sub[2]["data"]["message"]
                         )
-                        logger.debug("Request message decrypted : %s", request_received)
+                        logger.debug("Request message decrypted from topic %s : %s", msg_sub[2]["data"]["topic"], request_received)
 
                         # send back ack
                         payload_bin = json_rpc_pack_response(msg_sub[0], True)
@@ -163,14 +159,14 @@ class WCv2Client(WCClient):
             req = json_rpc_unpack(rcvd_data)
             # Auto session ping reply
             if req[1] == "wc_sessionPing":
-                self.reply(req[0], True)
+                self.reply(self.wallet_id, req[0], True)
                 return (req[0], "", [])
             return req
         return (None, "", [])
 
     def wait_for_response(self, resp_type):
         """Wait for a JSON-RPC response."""
-        # Waiting for publish ack
+        # Waiting for query ack (publish, subscribe, unsubscribe)
         logger.debug("Waiting for %s ack.", resp_type)
         cyclew = 0
         while cyclew < CYCLES_TIMEOUT:
@@ -184,10 +180,10 @@ class WCv2Client(WCClient):
             self.close()
             raise WCClientException(f"{resp_type} timeout")
 
-    def reply(self, req_id, result):
+    def reply(self, topic, req_id, result):
         """Send a RPC response to the webapp through the relay."""
         payload_bin = json_rpc_pack_response(req_id, result)
-        msgbp = self.enc_channel.encrypt_payload(payload_bin, None)
+        msgbp = self.topics[topic]["secure_channel"].encrypt_payload(payload_bin, None)
         logger.debug("Sending result reply.")
         self.publish(self.wallet_id, msgbp, "Sending result")
 
@@ -197,17 +193,18 @@ class WCv2Client(WCClient):
         data = rpc_query("irn_subscribe", {"topic": topic_id})
         self.write(data)
         subscription_id = self.wait_for_response("Topic subcription")
-        self.subscriptions[topic_id] = subscription_id
+        # Need to have already the secure_channel setup for this topic
+        self.topics[topic_id]["subscription_id"] = subscription_id
 
     def unsubscribe(self, topic_id):
         """Stop listening to a given topic."""
         logger.debug("Sending an unsubscribe request for %s.", topic_id)
         data = rpc_query(
-            "irn_unsubscribe", {"topic": topic_id, "id": self.subscriptions[topic_id]}
+            "irn_unsubscribe", {"topic": topic_id, "id": self.topics[topic_id]["subscription_id"]}
         )
         self.write(data)
         self.wait_for_response("Topic leaving")
-        del self.subscriptions[topic_id]
+        del self.topics[topic_id]
 
     def publish(self, topic, message, log_msg=""):
         """Send a message into a topic id channel."""
@@ -270,7 +267,7 @@ class WCv2Client(WCClient):
                 "error": {"code": 5000, "message": "User rejected the session."},
             },
         )
-        msgbn = self.enc_channel.encrypt_payload(respo_neg, None)
+        msgbn = self.topics[self.proposal_topic]["secure_channel"].encrypt_payload(respo_neg, None)
         logger.debug("Replying the session rejection.")
         self.publish(self.proposal_topic, msgbn, "Session rejection")
 
@@ -288,6 +285,7 @@ class WCv2Client(WCClient):
         # Current topic for reconnect method and session unsub
         self.wallet_id = self.proposal_topic
         self.reply(
+            self.proposal_topic,
             msg_id,
             {
                 "relay": {
@@ -324,8 +322,9 @@ class WCv2Client(WCClient):
             },
         )
 
-        self.enc_channel = EncryptedEnvelope(self.local_keypair.shared_key)
-        msgb = self.enc_channel.encrypt_payload(json_encode(respo))
+        chat_enc_channel = EncryptedEnvelope(self.local_keypair.shared_key)
+        self.topics[chat_topic] = {"secure_channel": chat_enc_channel}
+        msgb = chat_enc_channel.encrypt_payload(json_encode(respo))
         logger.debug("Approving the session proposal.")
 
         self.subscribe(chat_topic)
@@ -340,7 +339,7 @@ class WCv2Client(WCClient):
             read_data = self.get_data()
             if read_data:
                 logger.debug("<-- WalletConnect response read : %s", read_data)
-                return read_data
+                break
             cyclew += 1
         if cyclew == CYCLES_TIMEOUT:
             self.close()

@@ -107,13 +107,26 @@ class WCClient:
                 sleep(0.15)
                 logger.debug("WCv1 close message sent.")
         if isinstance(self, WCv2Client) and self.wallet_id:
-            sess_delete = rpc_query(
-                "wc_sessionDelete", {"code": 6000, "message": "User disconnected"}
-            )
-            msgsessdel = self.enc_channel.encrypt_payload(json_encode(sess_delete))
-            logger.debug("Delete session message.")
-            self.publish(self.wallet_id, msgsessdel, "Session deletion")
-            self.unsubscribe(self.wallet_id)
+
+            try:
+                sess_delete = rpc_query(
+                    "wc_sessionDelete", {"code": 6000, "message": "User disconnected"}
+                )
+                msgsessdel = self.topics[self.wallet_id]["secure_channel"].encrypt_payload(json_encode(sess_delete))
+                logger.debug("Delete session message.")
+                self.publish(self.wallet_id, msgsessdel, "Session deletion")
+            except Exception:
+                pass
+            # self.unsubscribe(self.wallet_id)
+
+            # sess_delete = rpc_query(
+            #     "wc_pairingDelete", {"code": 6000, "message": "User disconnected"}
+            # )
+            # # on which topic ?
+            # msgsessdel = self.topics[self.proposal_topic]["secure_channel"].encrypt_payload(json_encode(sess_delete))
+            # logger.debug("Delete pairing.")
+            # self.publish(self.proposal_topic, msgsessdel, "Pairing deletion")
+
             self.wallet_id = ""
 
         if self.websock is not None:
