@@ -57,7 +57,11 @@ def json_rpc_unpack_response(raw_response):
     if resp_obj["jsonrpc"] != "2.0":
         raise Exception(f"Server is not JSONRPC 2.0 but {resp_obj.jsonrpc}")
     if "error" in resp_obj:
-        raise Exception(resp_obj["error"]["message"])
+        if "message" in resp_obj["error"]:
+            err_msg = resp_obj["error"]["message"]
+        else:
+            err_msg = resp_obj["error"]
+        raise Exception(err_msg)
     if "result" not in resp_obj:
         raise Exception(f"No result in response {raw_response}")
     return resp_obj["result"]
@@ -82,5 +86,10 @@ def json_rpc_unpack(buffer):
     if resp_obj["jsonrpc"] != "2.0":
         raise Exception(f"Server is not JSONRPC 2.0 but {resp_obj.jsonrpc}")
     if "error" in resp_obj:
-        raise Exception(resp_obj["error"]["message"])
+        if "message" in resp_obj["error"]:
+            err_msg = resp_obj["error"]["message"]
+        else:
+            err_msg = resp_obj["error"]
+        raise Exception(err_msg)
+    print("JSON unpacked", resp_obj)
     return resp_obj["id"], resp_obj["method"], resp_obj["params"]
