@@ -185,7 +185,7 @@ class WCv2Client(WCClient):
         payload_bin = json_rpc_pack_response(req_id, result)
         msgbp = self.topics[topic]["secure_channel"].encrypt_payload(payload_bin, None)
         logger.debug("Sending result reply.")
-        self.publish(self.wallet_id, msgbp, "Sending result")
+        self.publish(topic, msgbp, "Sending result")
 
     def subscribe(self, topic_id):
         """Start listening to a given topic."""
@@ -296,7 +296,7 @@ class WCv2Client(WCClient):
         )
 
         # Unsubscribe the old propose pairing topic
-        self.unsubscribe(self.proposal_topic)
+        # self.unsubscribe(self.proposal_topic)
 
         self.wallet_id = chat_topic
 
@@ -328,6 +328,19 @@ class WCv2Client(WCClient):
         logger.debug("Approving the session proposal.")
 
         self.subscribe(chat_topic)
+
+        logger.debug("Waiting for session on new topic.")
+        cyclew = 0
+        while cyclew < CYCLES_TIMEOUT:
+            sleep(UNIT_WAITING_TIME)
+            read_data = self.get_data()
+            if read_data:
+                logger.debug("<-- WalletConnect response read : %s", read_data)
+                break
+            cyclew += 1
+        if cyclew == CYCLES_TIMEOUT:
+            self.close()
+            raise WCClientException("session ack timeout")
 
         # Finally send the session approve
         self.publish(self.wallet_id, msgb, "sessionSettle post")
