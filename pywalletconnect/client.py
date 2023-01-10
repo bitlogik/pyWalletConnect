@@ -200,7 +200,7 @@ class WCv1Client(WCClient):
         # Chain ID is managed outside the walletconnect classes
         # Shall be managed by the user / webapp
         super().__init__()
-        logger.debug("Opening a WalletConnect client with %s", ws_url)
+        logger.debug("Opening a WalletConnect v1 client with %s", ws_url)
         self.relay_url = ws_url
         try:
             self.websock = WebSocketClient(ws_url)
