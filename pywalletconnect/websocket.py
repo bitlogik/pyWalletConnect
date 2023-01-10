@@ -1,7 +1,7 @@
 # -*- coding: utf8 -*-
 
 # pyWalletConnect : WebSocket client
-# Copyright (C) 2021-2022 BitLogiK
+# Copyright (C) 2021-2023 BitLogiK
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -75,7 +75,13 @@ class WebSocketClient:
             req_headers = []
             if origin:
                 req_headers.append((b"Origin", origin.encode("utf8")))
-            self.send(Request(host=ws_url.hostname, target=query_path or "/", extra_headers=req_headers))
+            self.send(
+                Request(
+                    host=ws_url.hostname,
+                    target=query_path or "/",
+                    extra_headers=req_headers,
+                )
+            )
             cyclew = 0
             while cyclew < CYCLES_TIMEOUT:
                 logger.debug("Waiting WebSocket handshake : %ith loop.", cyclew + 1)

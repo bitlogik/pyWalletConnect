@@ -42,6 +42,7 @@ from .json_rpc import (
 from .ws_auth import gen_ws_auth
 from .version import VERSION
 
+
 # ---- WalletConnect settings
 
 
@@ -353,6 +354,7 @@ class WCv1Client(WCClient):
 
 class WCv2ClientLegacy(WCClient):
     """WalletConnect old v2 wallet client connected to a relay with WebSocket."""
+
     # Initial v2 proposal with pairing and "waku" protocol
 
     host_relay = "relay.walletconnect.com"
