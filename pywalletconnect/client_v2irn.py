@@ -51,7 +51,7 @@ class WCv2Client(WCClient):
         self.proposal_topic = topic
         # Keep track of subcriptions and key for topics
         # has "subscription_id" and "secure_channel" keys
-        self.topics = {topic: {"secure_channel":EncryptedEnvelope(symkey)}}
+        self.topics = {topic: {"secure_channel": EncryptedEnvelope(symkey)}}
 
     @classmethod
     def from_wc2_uri(cls, wc_uri_str):
@@ -129,10 +129,14 @@ class WCv2Client(WCClient):
                 if msg_sub[1] == "irn_subscription":
                     # Filter if we are actually subscribed to this topic
                     if msg_sub[2]["data"]["topic"] in self.topics.keys():
-                        request_received = self.topics[msg_sub[2]["data"]["topic"]]["secure_channel"].decrypt_payload(
-                            msg_sub[2]["data"]["message"]
+                        request_received = self.topics[msg_sub[2]["data"]["topic"]][
+                            "secure_channel"
+                        ].decrypt_payload(msg_sub[2]["data"]["message"])
+                        logger.debug(
+                            "Request message decrypted from topic %s : %s",
+                            msg_sub[2]["data"]["topic"],
+                            request_received,
                         )
-                        logger.debug("Request message decrypted from topic %s : %s", msg_sub[2]["data"]["topic"], request_received)
 
                         # send back ack
                         payload_bin = json_rpc_pack_response(msg_sub[0], True)
@@ -204,7 +208,8 @@ class WCv2Client(WCClient):
         """Stop listening to a given topic."""
         logger.debug("Sending an unsubscribe request for %s.", topic_id)
         data = rpc_query(
-            "irn_unsubscribe", {"topic": topic_id, "id": self.topics[topic_id]["subscription_id"]}
+            "irn_unsubscribe",
+            {"topic": topic_id, "id": self.topics[topic_id]["subscription_id"]},
         )
         self.write(data)
         self.wait_for_response("Topic leaving")
@@ -271,7 +276,9 @@ class WCv2Client(WCClient):
                 "error": {"code": 5000, "message": "User rejected the session."},
             },
         )
-        msgbn = self.topics[self.proposal_topic]["secure_channel"].encrypt_payload(respo_neg, None)
+        msgbn = self.topics[self.proposal_topic]["secure_channel"].encrypt_payload(
+            respo_neg, None
+        )
         logger.debug("Replying the session rejection.")
         self.publish(self.proposal_topic, msgbn, "Session rejection")
 

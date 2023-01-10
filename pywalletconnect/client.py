@@ -112,7 +112,9 @@ class WCClient:
                 sess_delete = rpc_query(
                     "wc_sessionDelete", {"code": 6000, "message": "User disconnected"}
                 )
-                msgsessdel = self.topics[self.wallet_id]["secure_channel"].encrypt_payload(json_encode(sess_delete))
+                msgsessdel = self.topics[self.wallet_id][
+                    "secure_channel"
+                ].encrypt_payload(json_encode(sess_delete))
                 logger.debug("Delete session message.")
                 self.publish(self.wallet_id, msgsessdel, "Session deletion")
             except Exception:
