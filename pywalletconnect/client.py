@@ -883,6 +883,12 @@ class WCv2Client(WCClient):
                             "Session propose incompatible protocol."
                         )
                     self.peer_pubkey = read_data[2]["proposer"]["publicKey"]
+                    self.proposed_methods = read_data[2]["requiredNamespaces"][
+                        "eip155"
+                    ]["methods"]
+                    self.proposed_events = read_data[2]["requiredNamespaces"]["eip155"][
+                        "events"
+                    ]
                     peer_meta = read_data[2]["proposer"]["metadata"]
                     chain_id = read_data[2]["requiredNamespaces"]["eip155"]["chains"][
                         0
@@ -951,14 +957,8 @@ class WCv2Client(WCClient):
                 "namespaces": {
                     "eip155": {
                         "accounts": [f"eip155:{chain_id}:{account_address}"],
-                        "methods": [
-                            "eth_sendTransaction",
-                            "eth_signTransaction",
-                            "eth_sign",
-                            "personal_sign",
-                            "eth_signTypedData",
-                        ],
-                        "events": ["chainChanged", "accountsChanged"],
+                        "methods": self.proposed_methods,
+                        "events": self.proposed_events,
                     }
                 },
                 "expiry": now_epoch + 14400,
