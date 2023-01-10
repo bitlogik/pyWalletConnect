@@ -18,6 +18,7 @@
 
 
 from logging import getLogger
+from queue import SimpleQueue
 from urllib.parse import urlparse
 from threading import Timer
 from time import sleep
@@ -59,7 +60,7 @@ class WebSocketClient:
         assert ws_url.scheme == "https"
         self.partial_txtmessages = []
         self.partial_binmessages = []
-        self.received_messages = []
+        self.received_messages = SimpleQueue()
         port_num = ws_url.port or DEFAULT_HTTPS_PORT
         try:
             self.ssocket = TLSsocket(ws_url.hostname, port_num)
@@ -87,8 +88,8 @@ class WebSocketClient:
                 logger.debug("Waiting WebSocket handshake : %ith loop.", cyclew + 1)
                 sleep(UNIT_WAITING_TIME)
                 self.get_messages()
-                while len(self.received_messages) > 0:
-                    res = self.received_messages.pop()
+                while not self.received_messages.empty():
+                    res = self.received_messages.get()
                     if res == "established":
                         # Start a timer to reply pings in real-time
                         # and collect input messages
@@ -160,10 +161,10 @@ class WebSocketClient:
             for event in self.websock_conn.events():
                 if isinstance(event, AcceptConnection):
                     logger.debug("WebSocket connection established.")
-                    self.received_messages.insert(0, "established")
+                    self.received_messages.put("established")
                 elif isinstance(event, RejectConnection):
                     logger.debug("WebSocket connection rejected.")
-                    self.received_messages.insert(0, "rejected")
+                    self.received_messages.put("rejected")
                 elif isinstance(event, CloseConnection):
                     logger.error(
                         "WebSocket Connection closed: code=%i reason=%s",
@@ -182,7 +183,7 @@ class WebSocketClient:
                         logger.debug(
                             "WebSocket Text message received : %s", full_message
                         )
-                        self.received_messages.insert(0, full_message)
+                        self.received_messages.put(full_message)
                         self.partial_txtmessages = []
                 elif isinstance(event, BytesMessage):
                     self.partial_binmessages.append(event.data)
@@ -191,7 +192,7 @@ class WebSocketClient:
                         logger.debug(
                             "WebSocket Binary message received : %s", full_message
                         )
-                        self.received_messages.insert(0, full_message)
+                        self.received_messages.put(full_message)
                         self.partial_binmessages = []
 
                 else:

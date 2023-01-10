@@ -104,18 +104,17 @@ class WCv2Client(WCClient):
         if not hasattr(self.websock, "ssocket"):
             logger.debug("Reconnecting WebSocket")
             self.reconnect()
-        logger.debug("Get JSON resp, full messages queue : %s", str(self.data_queue))
-        if len(self.data_queue) > 0:
-            for idx, rcvd_message in enumerate(self.data_queue):
-                logger.debug("A JSON message in the queue : %s", rcvd_message)
-                if rcvd_message and rcvd_message.startswith('{"'):
-                    try:
-                        request_received = json_rpc_unpack_response(rcvd_message)
-                        logger.debug("Result response received : %s", request_received)
-                        self.data_queue.pop(idx)
-                        return request_received
-                    except Exception:
-                        pass
+        if not self.data_queue.empty():
+            rcvd_message = self.data_queue.get()
+            logger.debug("A JSON message in the queue : %s", rcvd_message)
+            if rcvd_message and rcvd_message.startswith('{"'):
+                try:
+                    request_received = json_rpc_unpack_response(rcvd_message)
+                    logger.debug("Result JSON response received : %s", request_received)
+                    return request_received
+                except Exception:
+                    # Not a response message, reinsert in queue
+                    self.data_queue.put(rcvd_message)
         return None
 
     def get_data(self):
@@ -126,8 +125,8 @@ class WCv2Client(WCClient):
         if not hasattr(self.websock, "ssocket"):
             logger.debug("Reconnecting WebSocket")
             self.reconnect()
-        if len(self.data_queue) > 0:
-            rcvd_message = self.data_queue.pop()
+        if not self.data_queue.empty():
+            rcvd_message = self.data_queue.get()
             logger.debug("A message pop from the queue : %s", rcvd_message)
             if rcvd_message and rcvd_message.startswith('{"'):
                 msg_sub = json_rpc_unpack(rcvd_message)

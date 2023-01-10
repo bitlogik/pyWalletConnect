@@ -83,8 +83,8 @@ class WCv1Client(WCClient):
         if not hasattr(self.websock, "ssocket"):
             logger.debug("Reconnecting WebSocket")
             self.reconnect()
-        if len(self.data_queue) > 0:
-            rcvd_message = self.data_queue.pop()
+        if not self.data_queue.empty():
+            rcvd_message = self.data_queue.get()
             logger.debug("A message pop from the queue : %s", rcvd_message)
             if rcvd_message and rcvd_message.startswith('{"'):
                 request_received = self.enc_channel.decrypt_payload(loads(rcvd_message))
