@@ -157,7 +157,7 @@ class WCClient:
 
     def get_relay_url(self):
         """Give the URL of the WebSocket relay bridge."""
-        return self.relay_url
+        return self.relay_url.split("?")[0]
 
     def reconnect(self):
         """Reconnect to relay host when disconnected"""
