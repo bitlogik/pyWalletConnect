@@ -159,7 +159,7 @@ class WCv2Client(WCClient):
             req = json_rpc_unpack(rcvd_data)
             # Auto session ping reply
             if req[1] == "wc_sessionPing":
-                self.reply(self.wallet_id, req[0], True)
+                self._reply(self.wallet_id, req[0], True)
                 return (req[0], "", [])
             return req
         return (None, "", [])
@@ -180,7 +180,11 @@ class WCv2Client(WCClient):
             self.close()
             raise WCClientException(f"{resp_type} timeout")
 
-    def reply(self, topic, req_id, result):
+    def reply(self, req_id, result):
+        """Send a RPC response to the current topic to the webapp through the relay."""
+        self._reply(self.wallet_id, req_id, result)
+
+    def _reply(self, topic, req_id, result):
         """Send a RPC response to the webapp through the relay."""
         payload_bin = json_rpc_pack_response(req_id, result)
         msgbp = self.topics[topic]["secure_channel"].encrypt_payload(payload_bin, None)
@@ -284,7 +288,7 @@ class WCv2Client(WCClient):
 
         # Current topic for reconnect method and session unsub
         self.wallet_id = self.proposal_topic
-        self.reply(
+        self._reply(
             self.proposal_topic,
             msg_id,
             {
