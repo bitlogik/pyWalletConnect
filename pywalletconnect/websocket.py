@@ -53,7 +53,7 @@ class WebSocketClientException(Exception):
 class WebSocketClient:
     """WebSocket client with a host within HTTPS, send and decode messages."""
 
-    def __init__(self, wsURL):
+    def __init__(self, wsURL, origin=""):
         """Open the WebSocket connection to a given a URL."""
         ws_url = urlparse(wsURL)
         assert ws_url.scheme == "https"
@@ -72,7 +72,10 @@ class WebSocketClient:
                 ws_url.hostname,
                 query_path,
             )
-            self.send(Request(host=ws_url.hostname, target=query_path or "/"))
+            req_headers = []
+            if origin:
+                req_headers.append((b"Origin", origin.encode("utf8")))
+            self.send(Request(host=ws_url.hostname, target=query_path or "/", extra_headers=req_headers))
             cyclew = 0
             while cyclew < CYCLES_TIMEOUT:
                 logger.debug("Waiting WebSocket handshake : %ith loop.", cyclew + 1)

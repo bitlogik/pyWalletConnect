@@ -57,6 +57,7 @@ class WCClient:
 
     wc_uri_pattern = regex_compile(r"^wc:(.+)@(\d)\?(.+)$")
     project_id = ""
+    origin_domain = ""
     wallet_metadata = {
         "description": f"pyWalletConnect v{VERSION} by BitLogiK",
         "url": "https://github.com/bitlogik/pyWalletConnect",
@@ -87,6 +88,11 @@ class WCClient:
     def set_project_id(cls, project_id):
         """Set the project id, mandatory for v2, using the central official relay."""
         cls.project_id = project_id
+
+    @classmethod
+    def set_origin(cls, origin):
+        """Set the Oring header in WS start request."""
+        cls.origin_domain = origin
 
     def close(self):
         """Close the WebSocket connection when deleting the object."""
@@ -139,7 +145,7 @@ class WCClient:
         """Reconnect to relay host when disconnected"""
         # Internal use, needs websock deleted (None)
         try:
-            self.websock = WebSocketClient(self.relay_url)
+            self.websock = WebSocketClient(self.relay_url, self.origin_domain)
             self.data_queue = self.websock.received_messages
         except Exception as exc:
             logger.error("Error during reconnection : %s", str(exc), exc_info=exc)
