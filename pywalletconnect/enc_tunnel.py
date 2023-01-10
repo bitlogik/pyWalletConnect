@@ -197,7 +197,7 @@ class EncryptedEnvelope:
         """Decrypt a payload object into a string message."""
         payload = standard_b64decode(fullpayload_b64)
         htype = payload[0]
-        pubkey = None
+        # pubkey = None
         if htype == 0:
             nonce = payload[1:13]
         elif htype == 1:
@@ -239,9 +239,7 @@ class KeyAgreement:
         return hashk[:32], hashk[32:]
 
     def hkdf_derive_enc_key(self):
-        # const hkdf = new HKDF(SHA256, sharedKey)
-        # const symKey = hkdf.expand(KEY_LENGTH)
-        # return toString(symKey, BASE16)
+        """Update the current shared key with HKDF"""
         hkdf = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=None)
         self.shared_key = hkdf.derive(self.shared_key)
 

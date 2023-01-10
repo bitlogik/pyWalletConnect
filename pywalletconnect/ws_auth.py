@@ -41,10 +41,7 @@ def gen_ws_auth():
         ser.Encoding.Raw, ser.PublicFormat.Raw
     )
 
-    print("PUB KEY :", pubkey_bytes.hex(" "))
     iss = "did:key:z" + bin_to_base58(b"\xED\x01" + pubkey_bytes)
-
-    print(iss)
 
     # {"alg":"EdDSA","typ":"JWT"}
     header = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9."

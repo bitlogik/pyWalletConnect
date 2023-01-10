@@ -91,5 +91,4 @@ def json_rpc_unpack(buffer):
         else:
             err_msg = resp_obj["error"]
         raise Exception(err_msg)
-    print("JSON unpacked", resp_obj)
     return resp_obj["id"], resp_obj["method"], resp_obj["params"]

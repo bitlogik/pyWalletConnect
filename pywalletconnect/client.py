@@ -179,26 +179,6 @@ class WCClient:
         logger.debug("WalletConnect message sending to relay : %s", raw_data)
         self.websock.write_message(raw_data)
 
-    def reply(self, req_id, result):
-        """Send a RPC response to the webapp through the relay."""
-        payload_bin = json_rpc_pack_response(req_id, result)
-        datafull = {
-            "topic": self.app_peer_id,
-            "type": "pub",
-            "payload": json_encode(self.enc_channel.encrypt_payload(payload_bin)),
-        }
-        logger.debug(
-            "--> WalletConnect Replying id[%i] : result=%s\nRaw message: %s",
-            req_id,
-            result,
-            payload_bin,
-        )
-        self.write(datafull)
-
-    def subscribe(self, topic_id):
-        """Abstract class for topic subscribe."""
-        raise NotImplementedError
-
 
 class WCv1Client(WCClient):
     """WalletConnect v1 wallet client connected to a relay with WebSocket."""
@@ -878,7 +858,6 @@ class WCv2Client(WCClient):
         """
         self.subscribe(self.proposal_topic)
 
-        # Waiting for settlement
         logger.debug("Waiting for WalletConnect session proposal.")
         cyclew = 0
         while cyclew < CYCLES_TIMEOUT:
@@ -903,7 +882,7 @@ class WCv2Client(WCClient):
             cyclew += 1
         if cyclew == CYCLES_TIMEOUT:
             self.close()
-            raise WCClientException("settlement timeout")
+            raise WCClientException("No session proposal received.")
 
         return read_data[0], chain_id, peer_meta
 
@@ -943,7 +922,7 @@ class WCv2Client(WCClient):
             },
         )
 
-        # # Unsubscribe the old propose pairing topic
+        # Unsubscribe the old propose pairing topic
         self.unsubscribe(self.proposal_topic)
 
         self.wallet_id = chat_topic
