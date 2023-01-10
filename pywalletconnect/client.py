@@ -123,12 +123,13 @@ class WCClient:
                 sleep(0.15)
                 logger.debug("WCv1 close message sent.")
         if isinstance(self, WCv2Client) and self.wallet_id:
-            respo = rpc_query(
+            sess_delete = rpc_query(
                 "wc_sessionDelete", {"code": 6000, "message": "User disconnected"}
             )
-            msgb = self.enc_channel.encrypt_payload(json_encode(respo))
+            msgsessdel = self.enc_channel.encrypt_payload(json_encode(sess_delete))
             logger.debug("Delete session message.")
-            self.publish(self.wallet_id, msgb, "SessionSettle deletion")
+            self.publish(self.wallet_id, msgsessdel, "Session deletion")
+            self.unsubscribe(self.wallet_id)
             self.wallet_id = ""
 
         if self.websock is not None:
