@@ -453,6 +453,12 @@ class WCv2ClientLegacy(WCClient):
                             msg_sub[2]["data"]["message"]
                         )
                         logger.debug("Request message decrypted : %s", request_received)
+
+                        # Send back ack
+                        payload_bin = json_rpc_pack_response(msg_sub[0], True)
+                        logger.debug("Sending result reply.")
+                        self.websock.write_message(payload_bin)
+
                         return request_received
         return None
 
@@ -581,7 +587,7 @@ class WCv2ClientLegacy(WCClient):
                             pairing_rpc_id = iparams["topic"]
                             peer_meta = iparams["proposer"]["metadata"]
                             chain_id = iparams["permissions"]["blockchain"]["chains"]
-                break
+                            break
             cyclew += 1
         if cyclew == CYCLES_TIMEOUT:
             self.close()
