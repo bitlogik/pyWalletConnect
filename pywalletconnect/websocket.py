@@ -18,7 +18,7 @@
 
 
 from logging import getLogger
-from queue import SimpleQueue
+from queue import Queue
 from urllib.parse import urlparse
 from threading import Timer
 from time import sleep
@@ -60,7 +60,7 @@ class WebSocketClient:
         assert ws_url.scheme == "https"
         self.partial_txtmessages = []
         self.partial_binmessages = []
-        self.received_messages = SimpleQueue()
+        self.received_messages = Queue()
         port_num = ws_url.port or DEFAULT_HTTPS_PORT
         try:
             self.ssocket = TLSsocket(ws_url.hostname, port_num)
