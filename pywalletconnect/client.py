@@ -119,15 +119,6 @@ class WCClient:
                 self.publish(self.wallet_id, msgsessdel, "Session deletion")
             except Exception:
                 pass
-            # self.unsubscribe(self.wallet_id)
-
-            # sess_delete = rpc_query(
-            #     "wc_pairingDelete", {"code": 6000, "message": "User disconnected"}
-            # )
-            # # on which topic ?
-            # msgsessdel = self.topics[self.proposal_topic]["secure_channel"].encrypt_payload(json_encode(sess_delete))
-            # logger.debug("Delete pairing.")
-            # self.publish(self.proposal_topic, msgsessdel, "Pairing deletion")
 
             self.wallet_id = ""
 
