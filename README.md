@@ -5,16 +5,18 @@
 
 ### A WalletConnect implementation for wallets in Python
 
-A Python3 library to link a wallet with a WalletConnect web3 app. This library connects a Python wallet with a web3 app online, using [the WalletConnect standard](https://docs.walletconnect.org/v/1.0/).
+A Python3 library to link a wallet with a WalletConnect web3 app. This library connects a Python wallet with a web3 app online, using the WalletConnect standard.
 
-Thanks to WalletConnect, a Dapp is able to send JSON-RPC call requests to be handled by the Wallet, sign requests for transactions or messages remotely. Using WalletConnect, the wallet is a JSON-RPC service that the dapp can query through an encrypted tunnel and an online relay. This library is built for the wallet part, which establishes a link with the dapp and receives requests form a web3 app.
+Thanks to WalletConnect, a Dapp is able to send JSON-RPC call requests to be handled by the Wallet, sign requests for transactions or messages remotely. Using WalletConnect, the wallet is a JSON-RPC service that the dapp can query through an encrypted tunnel and an online relay. This library is built for the wallet part, which establishes a link with the dapp and receives requests.
 
-WalletConnect version 2 support is experimental.
+WalletConnect version 2 support is beta.
 
 pyWalletConnect manages automatically on its own all the WalletConnect stack :
 
 ```
 WalletConnect
+    |
+ Topics managt
     |
  JSON-RPC
     |
@@ -85,13 +87,13 @@ There'a a basic minimal working CLI demo at : https://gist.github.com/bitlogik/8
 
 pyWalletConnect maintains a TLS WebSocket opened with the host relay. It builds an internal pool of received request messages from the dapp.
 
-Once the session is opened, you can read the pending messages received from the Dapp from time to time. And then your wallet app can process them.
+Once the session is opened, you can read the pending messages received from the Dapp from time to time. And then your wallet app can process these request, and send back the reply.
 
 Use a deamon thread timer for example, to call the `get_message()` method in a short time frequency. 3-6 seconds is an acceptable delay. This can also performed in a blocking *for* loop with a sleeping time. Then process the Dapp queries for further user wallet actions.
 
 Remember to keep track of the request id, as it is needed for `.reply(req_id, result)` ultimately when sending the processing result back to the dapp service. One way is to provide the id in argument in your processing methods. Also this can be done with global or shared parameters.
 
-When a WCClient object created from a WCv1 link is closed or deleted, it will send to the dapp a closing session message.
+When a WCClient object created from a WC link is closed or deleted, it will send to the dapp a closing session message.
 
 ```python
 def process_sendtransaction(call_id, tx):
@@ -166,7 +168,7 @@ Create a WalletConnect wallet client from a wc v1 or v2 URI. (class method const
 You need to call *open_session* immediately after to get the session request info.
 
 `.close()`  
-Send a session close message (if v1), and close the underlying WebSocket connection.
+Send a session close message, and close the underlying WebSocket connection.
 
 `.get_relay_url()`  
 Give the page address of the WebSocket relay bridge.
