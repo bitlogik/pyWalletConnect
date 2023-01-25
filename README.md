@@ -53,6 +53,7 @@ from pywalletconnect import WCClient, WCClientInvalidOption
 string_uri = input("Input the WalletConnect URI : ")
 WCClient.set_wallet_metadata(WALLET_METADATA)  # Optional, else identify pyWalletConnect as wallet
 WCClient.set_project_id(WALLETCONNECT_PROJECT_ID)  # Required for v2
+WCClient.set_origin(WALLETCONNECT_ORIGIN_DOMAIN)  # Optional for v2
 try:
     wallet_dapp = WCClient.from_wc_uri(string_uri)
 except WCClientInvalidOption as exc:
@@ -80,7 +81,7 @@ else:
     raise UserInteration("user rejected the dapp connection request.")
 ```
 
-There'a a basic minimal working CLI demo at : https://gist.github.com/bitlogik/593ac797d43e10ae294b84898524cc31
+There'a a basic minimal working CLI demo at : https://gist.github.com/bitlogik/89b41bb60443c041704f82bcd9b43901
 
 pyWalletConnect maintains a TLS WebSocket opened with the host relay. It builds an internal pool of received request messages from the dapp.
 
@@ -154,7 +155,10 @@ Optional. If not provided, when v2, it sends the default pyWalletConnect metadat
 
 `WCClient.set_project_id( project_id )`  
 Class method to set the WalletConnect project id. This is mandatory to use a project id when  
-using WC v2 with the official wafu bridge relay.
+using WC v2 with the official central bridge relay.
+
+`WCClient.set_origin( origin_domain )`  
+Class method to set the origin of the first HTTP query for websocket. Only for v2, optional.
 
 `WCClient.from_wc_uri( wc_uri_str )`  
 Create a WalletConnect wallet client from a wc v1 or v2 URI. (class method constructor)  
@@ -165,7 +169,7 @@ You need to call *open_session* immediately after to get the session request inf
 Send a session close message (if v1), and close the underlying WebSocket connection.
 
 `.get_relay_url()`  
-Give the URL of the WebSocket relay bridge.
+Give the page address of the WebSocket relay bridge.
 
 `.get_message()`  
 Get a RPC call message from the internal waiting list. pyWalletConnect maintains an internal pool of received request messages from the dapp. And this get_message method pops out a message in a FIFO manner : the first method call provides the oldest (first) received message. It can be used like a pump : call *get_message()* until an empty response. Because it reads a message from the receiving bucket one by one.  
@@ -196,7 +200,7 @@ Send a session rejection message to the webapp (through the relay). *req_id* is 
 
 ## License
 
-Copyright (C) 2021-2022  BitLogiK SAS
+Copyright (C) 2021-2023  BitLogiK SAS
 
 This program is free software: you can redistribute it and/or modify  
 it under the terms of the GNU General Public License as published by  
