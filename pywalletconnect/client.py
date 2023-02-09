@@ -116,7 +116,7 @@ class WCClient:
                     "secure_channel"
                 ].encrypt_payload(json_encode(sess_delete))
                 logger.debug("Delete session message.")
-                self.publish(self.wallet_id, msgsessdel, "Session deletion")
+                self.publish(self.wallet_id, msgsessdel, 1112, "Session deletion")
             except Exception:
                 pass
 

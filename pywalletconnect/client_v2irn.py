@@ -163,7 +163,7 @@ class WCv2Client(WCClient):
             req = json_rpc_unpack(rcvd_data)
             # Auto session ping reply
             if req[1] == "wc_sessionPing":
-                self._reply(self.wallet_id, req[0], True)
+                self._reply(self.wallet_id, req[0], True, 1115)
                 return (req[0], "", [])
             return req
         return (None, "", [])
@@ -188,13 +188,13 @@ class WCv2Client(WCClient):
         """Send a RPC response to the current topic to the webapp through the relay."""
         self._reply(self.wallet_id, req_id, result)
 
-    def _reply(self, topic, req_id, result):
+    def _reply(self, topic, req_id, result, tag=0):
         """Send a RPC response to the webapp through the relay."""
         logger.debug("Sending response result : %s , %s", req_id, result)
         payload_bin = json_rpc_pack_response(req_id, result)
         msgbp = self.topics[topic]["secure_channel"].encrypt_payload(payload_bin, None)
         logger.debug("Sending result reply.")
-        self.publish(topic, msgbp, "Sending result")
+        self.publish(topic, msgbp, tag, "Sending result")
 
     def subscribe(self, topic_id):
         """Start listening to a given topic."""
@@ -216,11 +216,11 @@ class WCv2Client(WCClient):
         self.wait_for_response("Topic leaving")
         del self.topics[topic_id]
 
-    def publish(self, topic, message, log_msg=""):
+    def publish(self, topic, message, tag=0, log_msg=""):
         """Send a message into a topic id channel."""
         logger.debug("Sending a publish request for %s.", topic)
         data = rpc_query(
-            "irn_publish", {"topic": topic, "message": message, "ttl": 86400}
+            "irn_publish", {"topic": topic, "message": message, "ttl": 300, "tag": tag}
         )
         self.write(data)
         self.wait_for_response(log_msg)
@@ -285,7 +285,7 @@ class WCv2Client(WCClient):
             respo_neg, None
         )
         logger.debug("Replying the session rejection.")
-        self.publish(self.proposal_topic, msgbn, "Session rejection")
+        self.publish(self.proposal_topic, msgbn, 1109, "Session rejection")
 
     def reply_session_request(self, msg_id, chain_id, account_address):
         """Send the sessionRequest approval."""
@@ -309,6 +309,7 @@ class WCv2Client(WCClient):
                 },
                 "responderPublicKey": pubkey.hex(),
             },
+            1101,
         )
 
         # Unsubscribe the old propose pairing topic
@@ -359,7 +360,7 @@ class WCv2Client(WCClient):
             raise WCClientException("session ack timeout")
 
         # Finally send the session approve
-        self.publish(self.wallet_id, msgb, "sessionSettle post")
+        self.publish(self.wallet_id, msgb, 1102, "sessionSettle post")
 
         logger.debug("Waiting for sessionSettle post ack.")
         cyclew = 0
