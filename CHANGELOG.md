@@ -1,6 +1,11 @@
 
 # pyWalletConnect changes log
 
+## 1.3.2
+
+* Fix WC v2 RPC queries with tag
+* Add a debug output for responses sent
+
 ## 1.3.0
 
 * Add WC v2 "IRN"
