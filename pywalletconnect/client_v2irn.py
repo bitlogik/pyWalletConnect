@@ -298,7 +298,6 @@ class WCv2Client(WCClient):
         self.local_keypair.hkdf_derive_enc_key()
         chat_topic = self.local_keypair.derive_topic()
 
-        # Current topic for reconnect method and session unsub
         self.wallet_id = self.proposal_topic
         self._reply(
             self.proposal_topic,
@@ -313,8 +312,9 @@ class WCv2Client(WCClient):
         )
 
         # Unsubscribe the old propose pairing topic
-        # self.unsubscribe(self.proposal_topic)
+        self.unsubscribe(self.proposal_topic)
 
+        # Current topic for reconnect method and session unsub
         self.wallet_id = chat_topic
 
         now_epoch = int(time())
@@ -346,20 +346,7 @@ class WCv2Client(WCClient):
 
         self.subscribe(chat_topic)
 
-        logger.debug("Waiting for session on new topic.")
-        cyclew = 0
-        while cyclew < CYCLES_TIMEOUT:
-            sleep(UNIT_WAITING_TIME)
-            read_data = self.get_data()
-            if read_data:
-                logger.debug("<-- WalletConnect response read : %s", read_data)
-                break
-            cyclew += 1
-        if cyclew == CYCLES_TIMEOUT:
-            self.close()
-            raise WCClientException("session ack timeout")
-
-        # Finally send the session approve
+        # Send the session approve
         self.publish(self.wallet_id, msgb, 1102, "sessionSettle post")
 
         logger.debug("Waiting for sessionSettle post ack.")

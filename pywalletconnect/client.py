@@ -106,6 +106,7 @@ class WCClient:
                 self.write(datafull)
                 sleep(0.15)
                 logger.debug("WCv1 close message sent.")
+
         if isinstance(self, WCv2Client) and self.wallet_id:
 
             try:
