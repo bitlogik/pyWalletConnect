@@ -110,7 +110,7 @@ class WCClient:
 
             try:
                 sess_delete = rpc_query(
-                    "wc_sessionDelete", {"code": 6000, "message": "User disconnected"}
+                    "wc_sessionDelete", {"code": 6000, "message": "User disconnected."}
                 )
                 msgsessdel = self.topics[self.wallet_id][
                     "secure_channel"
