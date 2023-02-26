@@ -1,6 +1,11 @@
 
 # pyWalletConnect changes log
 
+## 1.3.3
+
+* Skip waiting for session message before settlement for WCv2
+* Relax requirements for Linux installation
+
 ## 1.3.2
 
 * Fix WC v2 RPC queries with tag
