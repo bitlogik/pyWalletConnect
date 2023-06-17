@@ -108,7 +108,6 @@ class WCClient:
                 logger.debug("WCv1 close message sent.")
 
         if isinstance(self, WCv2Client) and self.wallet_id:
-
             try:
                 sess_delete = rpc_query(
                     "wc_sessionDelete", {"code": 6000, "message": "User disconnected."}

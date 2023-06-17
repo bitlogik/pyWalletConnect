@@ -1,10 +1,6 @@
 from urllib.parse import urlparse, parse_qs
-from json import loads
 from logging import getLogger
-from re import compile as regex_compile
-from threading import Timer
 from time import sleep, time
-from uuid import uuid4
 
 from .websocket import WebSocketClient, CYCLES_TIMEOUT, UNIT_WAITING_TIME
 from .enc_tunnel import (
