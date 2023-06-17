@@ -6,7 +6,10 @@
 
 from setuptools import setup, find_packages
 
-from pywalletconnect.version import VERSION
+
+VERSION = ""
+exec(open("pywalletconnect/version.py", encoding="utf-8").read())
+
 
 with open("README.md") as readme_file:
     readme = readme_file.read()
