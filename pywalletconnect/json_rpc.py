@@ -18,6 +18,7 @@
 
 
 from json import dumps, loads
+from time import time_ns
 
 
 # ---- Helpers about messages encoding
@@ -33,16 +34,11 @@ def json_encode(dataobj):
 # The wallet is a JSON-RPC service in the WalletConnect standard
 
 
-id_counter = 0
-
-
 def rpc_query(method, params):
     """Build a JSON-RPC query object."""
-    global id_counter
-    id_counter += 1
     return {
         "jsonrpc": "2.0",
-        "id": id_counter,
+        "id": time_ns(),
         "method": method,
         "params": params,
     }
