@@ -1,6 +1,13 @@
 
 # pyWalletConnect changes log
 
+## 1.4.0
+
+* WalletConnect v2 no more considered beta
+* Use RPC id compliant with WCv2 relay
+* Change import version during installation
+* Now requires Python >= 3.7
+
 ## 1.3.3
 
 * Skip waiting for session message before settlement for WCv2
