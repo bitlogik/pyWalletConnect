@@ -7,16 +7,14 @@
 
 A Python3 library to link a wallet with a WalletConnect web3 app. This library connects a Python wallet with a web3 app online, using the WalletConnect standard.
 
-Thanks to WalletConnect, a Dapp is able to send JSON-RPC call requests to be handled by the Wallet, sign requests for transactions or messages remotely. Using WalletConnect, the wallet is a JSON-RPC service that the dapp can query through an encrypted tunnel and an online relay. This library is built for the wallet part, which establishes a link with the dapp and receives requests.
-
-WalletConnect version 2 support is beta.
+Thanks to WalletConnect, a Dapp is able to send JSON-RPC call requests to be handled by the wallet, remotely signing transactions or messages. Using WalletConnect, the wallet is a JSON-RPC service that the dapp can query through an encrypted tunnel and an online relay. This library is built for the wallet part, which establishes a link with the dapp and receives requests.
 
 pyWalletConnect manages automatically on its own all the WalletConnect stack :
 
 ```
 WalletConnect
     |
- Topics managt
+Topics mgmt
     |
  JSON-RPC
     |
@@ -33,7 +31,7 @@ EncryptedTunnel
 
 ## Installation and requirements
 
-Works with Python >= 3.6.
+Works with Python >= 3.7.
 
 ### Installation of this library
 
@@ -60,7 +58,8 @@ try:
     wallet_dapp = WCClient.from_wc_uri(string_uri)
 except WCClientInvalidOption as exc:
     # In case error in the wc URI provided
-    wallet_dapp.close()
+    if hasattr(wallet_dapp, "wc_client"):
+        wallet_dapp.close()
     raise InvalidOption(exc)
 # Wait for the sessionRequest info
 # Can throw WCClientException "sessionRequest timeout"
@@ -93,9 +92,10 @@ Use a daemon thread timer for example, to call the `get_message()` method in a s
 
 Remember to keep track of the request id, as it is needed for `.reply(req_id, result)` ultimately when sending the processing result back to the dapp service. One way is to provide the id in argument in your processing methods. Also this can be done with global or shared parameters.
 
-When a WCClient object created from a WC link is closed or deleted, it will send to the dapp a closing session message.
+When a WCClient object (created from a WC link) is closed or deleted, it will automatically send to the dapp a closing session message.
 
 ```python
+
 def process_sendtransaction(call_id, tx):
     # Processing the RPC query eth_sendTransaction
     # Collect the user approval about the tx query
@@ -120,16 +120,23 @@ def watch_messages():
         id_request = wc_message[0]
         method = wc_message[1]
         parameters = wc_message[2]
+        if method == "wc_sessionRequest" or method == "wc_sessionPayload":
+            # Read if v2 and convert to v1 format
+            if parameters.get("request"):
+                method = parameters["request"].get("method")
+                parameters = parameters["request"].get("params")
         if "wc_sessionUpdate" == method:
             if parameters[0].get("approved") is False:
                 raise Exception("Disconnected by the Dapp.")
+        #  v2 disconnect
+        if "wc_sessionDelete" == method:
+            raise Exception("Disconnected by the Dapp.")
         # Dispatch query processing
         elif "eth_signTypedData" == method:
             result = process_signtypeddata(id_request, parameters[1])
             wallet_dapp.reply(call_id, result)
         elif "eth_sendTransaction" == method:
-            tx_to_sign = parameters[1]
-            result = process_sendtransaction(id_request, tx_to_sign)
+            result = process_sendtransaction(id_request, parameters[0])
             wallet_dapp.reply(call_id, result)
         elif "eth_sign" == method:
             result = process_signtransaction(parameters[1])
@@ -152,7 +159,7 @@ See also the [RPC methods in WalletConnect](https://docs.walletconnect.org/v/1.0
 ## Interface methods of WCClient
 
 `WCClient.set_wallet_metadata( wallet_metadata )`  
-Class method to set the wallet metadata as object (v2). See WalletConnect standard for the format.  
+Class method to set the wallet metadata as object (v2). See [the WalletConnect standard for the format details](https://docs.walletconnect.com/2.0/specs/clients/core/pairing/data-structures#metadata).  
 Optional. If not provided, when v2, it sends the default pyWalletConnect metadata as wallet identification.
 
 `WCClient.set_project_id( project_id )`  
@@ -195,9 +202,12 @@ after 8 seconds and no sessionRequest received.
 `reply_session_request( msg_id, chain_id, account_address )`  
 Send a session approval message, when user approved the connection session request in the wallet.  
 *msg_id* is the RPC id of the session approval request.
+*chain_id* is the integer ideitifying the blockchain.
+*account_address* is a string of the address of the wallet account ("0x...").
 
 `.reject_session_request( req_id )`  
-Send a session rejection message to the webapp (through the relay). *req_id* is the RPC id of the session approval request.
+Send a session rejection message to the dapp (through the relay).
+*req_id* is the RPC id of the session approval request.
 
 
 ## License

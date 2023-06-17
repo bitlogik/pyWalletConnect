@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # pyWalletConnect : setup data
-# Copyright (C) 2021-2022 BitLogiK
+# Copyright (C) 2021-2023 BitLogiK
 
 from setuptools import setup, find_packages
 
