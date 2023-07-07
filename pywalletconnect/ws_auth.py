@@ -25,7 +25,7 @@ from .base58 import bin_to_base58
 
 
 # WalletConnect central relay authorization needed.
-# But keys are genereted on the fly, so not really an auth.
+# But keys are generated on the fly, so not really an auth.
 
 
 def b64enc(data):
