@@ -179,9 +179,9 @@ class WCv2ClientLegacy(WCClient):
             self.close()
             raise WCClientException(f"{resp_type} timeout")
 
-    def reply(self, req_id, result):
+    def reply(self, req_id, result, as_error=False):
         """Send a RPC response to the webapp through the relay."""
-        payload_bin = json_rpc_pack_response(req_id, result)
+        payload_bin = json_rpc_pack_response(req_id, result, as_error=as_error)
         msgbp = self.enc_channel.encrypt_payload(payload_bin, None)
         logger.debug("Sending result reply.")
         self.publish(self.wallet_id, msgbp, "Sending result")

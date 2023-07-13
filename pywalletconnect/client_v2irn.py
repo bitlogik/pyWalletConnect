@@ -184,14 +184,14 @@ class WCv2Client(WCClient):
             self.close()
             raise WCClientException(f"{resp_type} timeout")
 
-    def reply(self, req_id, result):
+    def reply(self, req_id, result, as_error=False):
         """Send a RPC response to the current topic to the webapp through the relay."""
-        self._reply(self.wallet_id, req_id, result)
+        self._reply(self.wallet_id, req_id, result, as_error=as_error)
 
-    def _reply(self, topic, req_id, result, tag=0):
+    def _reply(self, topic, req_id, result, tag=0, as_error=False):
         """Send a RPC response to the webapp through the relay."""
         logger.debug("Sending response result : %s , %s", req_id, result)
-        payload_bin = json_rpc_pack_response(req_id, result)
+        payload_bin = json_rpc_pack_response(req_id, result, as_error)
         msgbp = self.topics[topic]["secure_channel"].encrypt_payload(payload_bin, None)
         logger.debug("Sending result reply.")
         self.publish(topic, msgbp, tag, "Sending result")
