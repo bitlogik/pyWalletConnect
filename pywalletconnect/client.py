@@ -49,6 +49,7 @@ class WCClient:
     wc_uri_pattern = regex_compile(r"^wc:(.+)@(\d)\?(.+)$")
     project_id = ""
     origin_domain = ""
+    wallet_namespace = "eip155"
     wallet_metadata = {
         "description": f"pyWalletConnect v{VERSION} by BitLogiK",
         "url": "https://github.com/bitlogik/pyWalletConnect",
@@ -69,6 +70,11 @@ class WCClient:
     def __del__(self):
         """Dying gasp and clean close"""
         self.close()
+
+    @classmethod
+    def set_wallet_namespace(cls, wallet_namespace):
+        """Can override the default wallet namespace."""
+        cls.wallet_namespace = wallet_namespace
 
     @classmethod
     def set_wallet_metadata(cls, wallet_metadata):
