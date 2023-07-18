@@ -111,16 +111,16 @@ class WCv1Client(WCClient):
 
     def reply(self, req_id, result):
         """Send a RPC response to the webapp through the relay."""
-        self._reply(req_id, result)
+        self._reply(req_id, result, success=True)
 
     def reply_error(self, req_id, error_code, message):
         """Send a RPC error to the webapp through the relay."""
         result = {'code': error_code, 'message': message}
-        self._reply(req_id, result, as_error=True)
+        self._reply(req_id, result, success=False)
 
-    def _reply(self, req_id, result, as_error=False):
+    def _reply(self, req_id, result, success=True):
         """Send a RPC response to the webapp through the relay."""
-        payload_bin = json_rpc_pack_response(req_id, result, as_error=as_error)
+        payload_bin = json_rpc_pack_response(req_id, result, success=success)
         datafull = {
             "topic": self.app_peer_id,
             "type": "pub",
