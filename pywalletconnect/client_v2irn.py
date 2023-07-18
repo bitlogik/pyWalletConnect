@@ -200,7 +200,7 @@ class WCv2Client(WCClient):
     def _reply(self, topic, req_id, result, tag=0, success=True):
         """Send a RPC response to the webapp through the relay."""
         logger.debug("Sending response result : %s , %s", req_id, result)
-        payload_bin = json_rpc_pack_response(req_id, result, success=success)
+        payload_bin = json_rpc_pack_response(req_id, result, success)
         msgbp = self.topics[topic]["secure_channel"].encrypt_payload(payload_bin, None)
         logger.debug("Sending result reply.")
         self.publish(topic, msgbp, tag, "Sending result")
