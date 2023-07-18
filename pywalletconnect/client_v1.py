@@ -134,6 +134,10 @@ class WCv1Client(WCClient):
         )
         self.write(datafull)
 
+    def reject(self, req_id, error_code=5000):
+        """Inform the webapp that this request was rejected by the user."""
+        self.reply_error(req_id, "User rejected.", error_code)
+
     def subscribe(self, topic_id):
         """Start listening to a given peer."""
         logger.debug("Sending a subscription request for %s.", topic_id)

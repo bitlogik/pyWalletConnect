@@ -136,15 +136,19 @@ def watch_messages():
             result = process_signtypeddata(id_request, parameters[1])
             wallet_dapp.reply(call_id, result)
         elif "eth_sendTransaction" == method:
-            result = process_sendtransaction(id_request, parameters[0])
-            wallet_dapp.reply(call_id, result)
+            approve_ask = input("Approve (y/N)?: ").lower()
+            if approve_ask == 'y':
+                result = process_sendtransaction(id_request, parameters[0])
+                wallet_dapp.reply(call_id, result)
+            else:
+                wallet_dapp.reply_error(call_id, "User rejected methods.", 5002)
         elif "eth_sign" == method:
             approve_ask = input("Approve (y/N)?: ").lower()
             if approve_ask == 'y':
                 result = process_signtransaction(parameters[1])
                 wallet_dapp.reply(call_id, result)
             else:
-                wallet_dapp.reply_error(call_id, "User rejected request.", 4001)
+                wallet_dapp.reject(call_id)
         <...>
         # Next loop
         wc_message = wallet_dapp.get_message()
@@ -198,9 +202,14 @@ Send a RPC response to the webapp (through the relay).
 
 `.reply_error( req_id, message, error_code )`  
 Send a RPC error to the webapp (through the relay).  
-*req_id* is the JSON-RPC id of the corresponding query request.     
-*message* is a string providing a short description of the error.
+*req_id* is the JSON-RPC id of the corresponding query request.  
+*message* is a string providing a short description of the error.  
 *error_code* is a number that indicates the error type that occurred. See [the WalletConnect standard Error Codes](https://docs.walletconnect.com/2.0/specs/clients/sign/error-codes).   
+
+`.reject( req_id, error_code=5000 )`  
+Inform the webapp that this request was rejected by the user.  
+*req_id* is the JSON-RPC id of the corresponding query request.  
+*error_code* is a rejection code to send to webapp (default 5000).  
 
 `.open_session()`  
 Start a WalletConnect session : wait for the session call request message.  

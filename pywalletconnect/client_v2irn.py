@@ -201,6 +201,10 @@ class WCv2Client(WCClient):
         logger.debug("Sending result reply.")
         self.publish(topic, msgbp, tag, "Sending result")
 
+    def reject(self, req_id, error_code=5000):
+        """Inform the webapp that this request was rejected by the user."""
+        self.reply_error(req_id, "User rejected.", error_code)
+
     def subscribe(self, topic_id):
         """Start listening to a given topic."""
         logger.debug("Sending a subscription request for %s.", topic_id)
