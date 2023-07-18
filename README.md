@@ -144,7 +144,7 @@ def watch_messages():
                 result = process_signtransaction(parameters[1])
                 wallet_dapp.reply(call_id, result)
             else:
-                wallet_dapp.reply_error(call_id, 4001, "User rejected request.")
+                wallet_dapp.reply_error(call_id, "User rejected request.", 4001)
         <...>
         # Next loop
         wc_message = wallet_dapp.get_message()
@@ -196,11 +196,11 @@ Send a RPC response to the webapp (through the relay).
 *req_id* is the JSON-RPC id of the corresponding query request, where the result belongs to. One must kept track this id from the get_message, up to this reply. So a reply result is given back with its associated call query id.  
 *result_str* is the result field to provide in the RPC result response.
 
-`.reply_error( req_id, error_code, message )`  
+`.reply_error( req_id, message, error_code )`  
 Send a RPC error to the webapp (through the relay).  
 *req_id* is the JSON-RPC id of the corresponding query request.     
-*error_code* is a number that indicates the error type that occurred. See [the WalletConnect standard Error Codes](https://docs.walletconnect.com/2.0/specs/clients/sign/error-codes).   
 *message* is a string providing a short description of the error.
+*error_code* is a number that indicates the error type that occurred. See [the WalletConnect standard Error Codes](https://docs.walletconnect.com/2.0/specs/clients/sign/error-codes).   
 
 `.open_session()`  
 Start a WalletConnect session : wait for the session call request message.  

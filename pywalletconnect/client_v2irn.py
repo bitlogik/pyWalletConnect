@@ -188,7 +188,7 @@ class WCv2Client(WCClient):
         """Send a RPC response to the current topic to the webapp through the relay."""
         self._reply(self.wallet_id, req_id, result, success=True)
 
-    def reply_error(self, req_id, error_code, message):
+    def reply_error(self, req_id, message, error_code):
         """Send a RPC error to the current topic to the webapp through the relay."""
         result = {'code': error_code, 'message': message}
         self._reply(self.wallet_id, req_id, result, success=False)
