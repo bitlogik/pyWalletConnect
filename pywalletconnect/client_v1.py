@@ -113,6 +113,10 @@ class WCv1Client(WCClient):
         """Send a RPC response to the webapp through the relay."""
         self._reply(req_id, result, success=True)
 
+    def reject(self, req_id, error_code=5002):
+        """Inform the webapp that this request was rejected by the user."""
+        self.reply_error(req_id, "User rejected.", error_code)
+
     def reply_error(self, req_id, message, error_code):
         """Send a RPC error to the webapp through the relay."""
         result = {'code': error_code, 'message': message}
@@ -133,10 +137,6 @@ class WCv1Client(WCClient):
             payload_bin,
         )
         self.write(datafull)
-
-    def reject(self, req_id, error_code=5000):
-        """Inform the webapp that this request was rejected by the user."""
-        self.reply_error(req_id, "User rejected.", error_code)
 
     def subscribe(self, topic_id):
         """Start listening to a given peer."""

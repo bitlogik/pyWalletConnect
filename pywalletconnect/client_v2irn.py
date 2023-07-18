@@ -188,6 +188,10 @@ class WCv2Client(WCClient):
         """Send a RPC response to the current topic to the webapp through the relay."""
         self._reply(self.wallet_id, req_id, result, success=True)
 
+    def reject(self, req_id, error_code=5002):
+        """Inform the webapp that this request was rejected by the user."""
+        self.reply_error(req_id, "User rejected.", error_code)
+
     def reply_error(self, req_id, message, error_code):
         """Send a RPC error to the current topic to the webapp through the relay."""
         result = {'code': error_code, 'message': message}
@@ -200,10 +204,6 @@ class WCv2Client(WCClient):
         msgbp = self.topics[topic]["secure_channel"].encrypt_payload(payload_bin, None)
         logger.debug("Sending result reply.")
         self.publish(topic, msgbp, tag, "Sending result")
-
-    def reject(self, req_id, error_code=5000):
-        """Inform the webapp that this request was rejected by the user."""
-        self.reply_error(req_id, "User rejected.", error_code)
 
     def subscribe(self, topic_id):
         """Start listening to a given topic."""
