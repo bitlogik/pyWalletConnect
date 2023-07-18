@@ -286,9 +286,8 @@ class WCv2Client(WCClient):
 
         respo_neg = json_rpc_pack_response(
             msg_id,
-            {
-                "error": {"code": 5000, "message": "User rejected the session."},
-            },
+            {"code": 5000, "message": "User rejected the session."},
+            success=False
         )
         msgbn = self.topics[self.proposal_topic]["secure_channel"].encrypt_payload(
             respo_neg, None
