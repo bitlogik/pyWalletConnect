@@ -162,6 +162,10 @@ See also the [RPC methods in WalletConnect](https://docs.walletconnect.org/v/1.0
 Class method to set the wallet metadata as object (v2). See [the WalletConnect standard for the format details](https://docs.walletconnect.com/2.0/specs/clients/core/pairing/data-structures#metadata).  
 Optional. If not provided, when v2, it sends the default pyWalletConnect metadata as wallet identification.
 
+`WCClient.set_wallet_namespace( wallet_namespace )`  
+Class method to set the wallet [namespace](https://docs.walletconnect.com/2.0/advanced/glossary#namespaces), i.e. supported chain collection.  
+Only for v2, optional. Defaults to 'eip155' aka EVM-based chains.
+
 `WCClient.set_project_id( project_id )`  
 Class method to set the WalletConnect project id. This is mandatory to use a project id when  
 using WC v2 with the official central bridge relay.
