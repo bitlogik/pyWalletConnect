@@ -88,7 +88,7 @@ class WCClient:
 
     @classmethod
     def set_origin(cls, origin):
-        """Set the Oring header in WS start request."""
+        """Set the Origin header in WS start request."""
         cls.origin_domain = origin
 
     def close(self):
