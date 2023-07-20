@@ -111,7 +111,20 @@ class WCv1Client(WCClient):
 
     def reply(self, req_id, result):
         """Send a RPC response to the webapp through the relay."""
-        payload_bin = json_rpc_pack_response(req_id, result)
+        self._reply(req_id, result, True)
+
+    def reject(self, req_id, error_code=5002):
+        """Inform the webapp that this request was rejected by the user."""
+        self.reply_error(req_id, "User rejected.", error_code)
+
+    def reply_error(self, req_id, message, error_code):
+        """Send a RPC error to the webapp through the relay."""
+        result = {'code': error_code, 'message': message}
+        self._reply(req_id, result, False)
+
+    def _reply(self, req_id, result, success=True):
+        """Send a RPC response to the webapp through the relay."""
+        payload_bin = json_rpc_pack_response(req_id, result, success)
         datafull = {
             "topic": self.app_peer_id,
             "type": "pub",

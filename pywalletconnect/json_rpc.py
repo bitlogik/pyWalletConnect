@@ -63,12 +63,13 @@ def json_rpc_unpack_response(raw_response):
     return resp_obj["result"]
 
 
-def json_rpc_pack_response(idmsg, result_obj):
+def json_rpc_pack_response(idmsg, result_obj, success=True):
     """Build a JSON-RPC response."""
+    response_type = "result" if success else "error"
     request_obj = {
         "jsonrpc": "2.0",
         "id": idmsg,
-        "result": result_obj,
+        response_type: result_obj,
     }
     return json_encode(request_obj).encode("utf8")
 

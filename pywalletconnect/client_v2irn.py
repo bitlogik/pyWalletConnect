@@ -186,12 +186,21 @@ class WCv2Client(WCClient):
 
     def reply(self, req_id, result):
         """Send a RPC response to the current topic to the webapp through the relay."""
-        self._reply(self.wallet_id, req_id, result)
+        self._reply(self.wallet_id, req_id, result, success=True)
 
-    def _reply(self, topic, req_id, result, tag=0):
+    def reject(self, req_id, error_code=5002):
+        """Inform the webapp that this request was rejected by the user."""
+        self.reply_error(req_id, "User rejected.", error_code)
+
+    def reply_error(self, req_id, message, error_code):
+        """Send a RPC error to the current topic to the webapp through the relay."""
+        result = {'code': error_code, 'message': message}
+        self._reply(self.wallet_id, req_id, result, success=False)
+
+    def _reply(self, topic, req_id, result, tag=0, success=True):
         """Send a RPC response to the webapp through the relay."""
         logger.debug("Sending response result : %s , %s", req_id, result)
-        payload_bin = json_rpc_pack_response(req_id, result)
+        payload_bin = json_rpc_pack_response(req_id, result, success)
         msgbp = self.topics[topic]["secure_channel"].encrypt_payload(payload_bin, None)
         logger.debug("Sending result reply.")
         self.publish(topic, msgbp, tag, "Sending result")
@@ -280,9 +289,8 @@ class WCv2Client(WCClient):
 
         respo_neg = json_rpc_pack_response(
             msg_id,
-            {
-                "error": {"code": 5000, "message": "User rejected the session."},
-            },
+            {"code": 5000, "message": "User rejected the session."},
+            success=False
         )
         msgbn = self.topics[self.proposal_topic]["secure_channel"].encrypt_payload(
             respo_neg, None

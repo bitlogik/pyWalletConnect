@@ -181,7 +181,16 @@ class WCv2ClientLegacy(WCClient):
 
     def reply(self, req_id, result):
         """Send a RPC response to the webapp through the relay."""
-        payload_bin = json_rpc_pack_response(req_id, result)
+        self._reply(req_id, result, True)
+
+    def reply_error(self, req_id, message, error_code):
+        """Send a RPC error to the webapp through the relay."""
+        result = {'code': error_code, 'message': message}
+        self._reply(req_id, result, False)
+
+    def _reply(self, req_id, result, success=True):
+        """Send a RPC response to the webapp through the relay."""
+        payload_bin = json_rpc_pack_response(req_id, result, success)
         msgbp = self.enc_channel.encrypt_payload(payload_bin, None)
         logger.debug("Sending result reply.")
         self.publish(self.wallet_id, msgbp, "Sending result")
