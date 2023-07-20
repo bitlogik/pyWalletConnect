@@ -1,4 +1,3 @@
-
 # pyWalletConnect
 
 ![pyWalletConnect logo](logo.png)
@@ -95,7 +94,6 @@ Remember to keep track of the request id, as it is needed for `.reply(req_id, re
 When a WCClient object (created from a WC link) is closed or deleted, it will automatically send to the dapp a closing session message.
 
 ```python
-
 def process_sendtransaction(call_id, tx):
     # Processing the RPC query eth_sendTransaction
     # Collect the user approval about the tx query
@@ -159,7 +157,6 @@ def watch_messages():
 apptimer = Timer(4000)
 # Call watch_messages when expires periodically
 apptimer.notify = watch_messages
-
 ```
 
 See also the [RPC methods in WalletConnect](https://docs.walletconnect.org/v/1.0/json-rpc-api-methods/ethereum) to know more about the expected result regarding a specific RPC call.
@@ -175,8 +172,7 @@ Class method to set the wallet [namespace](https://docs.walletconnect.com/2.0/ad
 Only for v2, optional. Defaults to 'eip155' aka EVM-based chains.
 
 `WCClient.set_project_id( project_id )`  
-Class method to set the WalletConnect project id. This is mandatory to use a project id when  
-using WC v2 with the official central bridge relay.
+Class method to set the WalletConnect project id. This is mandatory to use a project id when using WC v2 with the official central bridge relay.
 
 `WCClient.set_origin( origin_domain )`  
 Class method to set the origin of the first HTTP query for websocket. Only for v2, optional.
@@ -232,7 +228,6 @@ Send a session approval message, when user approved the connection session reque
 Send a session rejection message to the dapp (through the relay).
 *req_id* is the RPC id of the session approval request.
 
-
 ## License
 
 Copyright (C) 2021-2023  BitLogiK SAS
@@ -245,7 +240,6 @@ This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of  
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
 See the GNU General Public License for more details.
-
 
 ## Support
 
