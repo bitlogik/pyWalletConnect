@@ -1,6 +1,11 @@
 
 # pyWalletConnect changes log
 
+## 1.5.0
+
+* Allow to use different wallet namespaces
+* Add reject methods
+
 ## 1.4.0
 
 * WalletConnect v2 no more considered beta
