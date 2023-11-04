@@ -243,7 +243,7 @@ class WCv2ClientLegacy(WCClient):
 
     def open_session(self):
         """Start a WalletConnect session : read session request message.
-        Return : (message RPC ID, chain ID, peerMeta data object).
+        Return : (message RPC ID, chainIDsList, peerMeta data object).
         Or throw WalletConnectClientException("sessionRequest timeout")
         after GLOBAL_TIMEOUT seconds.
         """

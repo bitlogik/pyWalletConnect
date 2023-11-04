@@ -256,7 +256,7 @@ class WCv2Client(WCClient):
     def open_session(self):
         """Start a WalletConnect session : read session proposal message.
         Not the session approval, but a warmup for the WalletConnect link.
-        Return : (message RPC ID, chain ID, peerMeta data object).
+        Return : (message RPC ID, chainIDsList, peerMeta data object).
         Or throw WalletConnectClientException("sessionRequest timeout")
         after GLOBAL_TIMEOUT seconds.
         """
@@ -277,31 +277,48 @@ class WCv2Client(WCClient):
                             "Session propose incompatible protocol."
                         )
                     self.peer_pubkey = read_data[2]["proposer"]["publicKey"]
-                    if read_data[2]["requiredNamespaces"].get(
-                            self.wallet_namespace) is None:
+                    req_namespace = read_data[2]["requiredNamespaces"].get(
+                        self.wallet_namespace
+                    )
+                    opt_namespace = read_data[2]["optionalNamespaces"].get(
+                        self.wallet_namespace
+                    )
+                    chain_ids = []
+                    if req_namespace is None and opt_namespace is None:
+                        # Namespace usage case 4 : Not supported
                         raise WCClientException(
-                            f"Wallet namespace ({self.wallet_namespace}) mismatch."
+                            f"Wallet namespace ({self.wallet_namespace}) not found in proposal."
                         )
-                    self.proposed_methods = read_data[2]["requiredNamespaces"][
-                        self.wallet_namespace
-                    ]["methods"]
-                    self.proposed_events = read_data[2]["requiredNamespaces"][
-                        self.wallet_namespace
-                    ]["events"]
+                    if req_namespace is not None:
+                        # Namespace usage case 3 (and 2)
+                        nps = "requiredNamespaces"
+                        chain_ids += [
+                            int(c.split(":")[-1])
+                            for c in read_data[2][nps][self.wallet_namespace]["chains"]
+                        ]
+                    if opt_namespace is not None:
+                        # Namespace usage case 1 (and 2)
+                        nps = "optionalNamespaces"
+                        chain_ids += [
+                            int(c.split(":")[-1])
+                            for c in read_data[2][nps][self.wallet_namespace]["chains"]
+                        ]
+                    # Use methods and events from optional is both present
+                    self.proposed_methods = read_data[2][nps][self.wallet_namespace][
+                        "methods"
+                    ]
+                    self.proposed_events = read_data[2][nps][self.wallet_namespace][
+                        "events"
+                    ]
                     peer_meta = read_data[2]["proposer"]["metadata"]
-                    chain_id = read_data[2]["requiredNamespaces"][
-                        self.wallet_namespace
-                    ]["chains"][
-                        0
-                    ].split(":")[-1]
-                    logger.debug("OK continue : Session proposal payload received")
+                    logger.debug("OK continue : Session proposal payload validated.")
                     break
             cyclew += 1
         if cyclew == CYCLES_TIMEOUT:
             self.close()
             raise WCClientException("No session proposal received.")
 
-        return read_data[0], chain_id, peer_meta
+        return read_data[0], chain_ids, peer_meta
 
     def reject_session_request(self, msg_id):
         """Send the sessionRequest rejection."""

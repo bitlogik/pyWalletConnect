@@ -165,7 +165,7 @@ class WCv1Client(WCClient):
 
     def open_session(self):
         """Start a WalletConnect session : read session request message.
-        Return : (message RPC ID, chain ID, peerMeta data object).
+        Return : (message RPC ID, chainIDsList, peerMeta data object).
         Or throw WalletConnectClientException("sessionRequest timeout")
         after GLOBAL_TIMEOUT seconds.
         """
@@ -192,7 +192,7 @@ class WCv1Client(WCClient):
 
         logger.debug(" -- Session Request received : %s", query_params[0])
         self.app_peer_id = query_params[0]["peerId"]
-        app_chain_id = query_params[0]["chainId"]
+        app_chain_id = [query_params[0]["chainId"]]
         return msg_id, app_chain_id, query_params[0]["peerMeta"]
 
     def reject_session_request(self, msg_id):

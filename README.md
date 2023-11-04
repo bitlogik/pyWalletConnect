@@ -62,8 +62,8 @@ except WCClientInvalidOption as exc:
     raise InvalidOption(exc)
 # Wait for the sessionRequest info
 # Can throw WCClientException "sessionRequest timeout"
-req_id, req_chain_id, request_info = wallet_dapp.open_session()
-if req_chain_id != account.chainID:
+req_id, chain_ids, request_info = wallet_dapp.open_session()
+if account.chainID not in chain_ids:
     # Chain id mismatch
     wallet_dapp.close()
     raise InvalidOption("Chain ID from Dapp is not the same as the wallet.")
@@ -214,7 +214,7 @@ Send a RPC error to the webapp (through the relay).
 `.open_session()`  
 Start a WalletConnect session : wait for the session call request message.  
 Must be called right after a WCClient creation.  
-Returns : (message RPCid, chain ID, peerMeta data object).  
+Returns : (message RPCid, chainIDsList, peerMeta data object).  
 Or throws WalletConnectClientException("sessionRequest timeout")
 after 8 seconds and no sessionRequest received.
 
