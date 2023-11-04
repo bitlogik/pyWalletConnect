@@ -1,6 +1,12 @@
 
 # pyWalletConnect changes log
 
+## 1.6.0
+
+* Can handle all namespaces common usage patterns
+* Accept optionalNamespace
+* return chain ids as a list (breaking change)
+
 ## 1.5.0
 
 * Allow to use different wallet namespaces
