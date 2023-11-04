@@ -185,7 +185,7 @@ class WCv2ClientLegacy(WCClient):
 
     def reply_error(self, req_id, message, error_code):
         """Send a RPC error to the webapp through the relay."""
-        result = {'code': error_code, 'message': message}
+        result = {"code": error_code, "message": message}
         self._reply(req_id, result, False)
 
     def _reply(self, req_id, result, success=True):
@@ -323,7 +323,11 @@ class WCv2ClientLegacy(WCClient):
                     "metadata": self.wallet_metadata,
                 },
                 "expiry": now_epoch + 14400,
-                "state": {"accounts": [f"{self.wallet_namespace}:{chain_id}:{account_address}"]},
+                "state": {
+                    "accounts": [
+                        f"{self.wallet_namespace}:{chain_id}:{account_address}"
+                    ]
+                },
             },
         )
         msgb = self.enc_channel.encrypt_payload(json_encode(respo))
