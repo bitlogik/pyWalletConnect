@@ -50,7 +50,7 @@ Basic example :
 from pywalletconnect import WCClient, WCClientInvalidOption
 # Input the wc URI
 string_uri = input("Input the WalletConnect URI : ")
-WCClient.set_wallet_metadata(WALLET_METADATA)  # Optional, else identify pyWalletConnect as wallet
+WCClient.set_wallet_metadata(WALLET_METADATA)  # Optional, else identify pyWalletConnect as the wallet
 WCClient.set_project_id(WALLETCONNECT_PROJECT_ID)  # Required for v2
 WCClient.set_origin(WALLETCONNECT_ORIGIN_DOMAIN)  # Optional for v2
 try:
