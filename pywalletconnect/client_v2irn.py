@@ -316,7 +316,11 @@ class WCv2Client(WCClient):
             cyclew += 1
         if cyclew == CYCLES_TIMEOUT:
             self.close()
-            raise WCClientException("No session proposal received.")
+            raise WCClientException(
+                "No session proposal received in time. "
+                "You probably reused an old connection code. "
+                "Please try again with a refreshed code link."
+            )
 
         return read_data[0], chain_ids, peer_meta
 
