@@ -293,14 +293,14 @@ class WCv2Client(WCClient):
                         # Namespace usage case 3 (and 2)
                         nps = "requiredNamespaces"
                         chain_ids += [
-                            int(c.split(":")[-1])
+                            c.split(":")[-1]
                             for c in read_data[2][nps][self.wallet_namespace]["chains"]
                         ]
                     if opt_namespace is not None:
                         # Namespace usage case 1 (and 2)
                         nps = "optionalNamespaces"
                         chain_ids += [
-                            int(c.split(":")[-1])
+                            c.split(":")[-1]
                             for c in read_data[2][nps][self.wallet_namespace]["chains"]
                         ]
                     # Use methods and events from optional is both present
