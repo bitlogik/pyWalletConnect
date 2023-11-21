@@ -63,7 +63,7 @@ except WCClientInvalidOption as exc:
 # Wait for the sessionRequest info
 # Can throw WCClientException "sessionRequest timeout"
 req_id, chain_ids, request_info = wallet_dapp.open_session()
-if account.chainID not in chain_ids:
+if str(account.chainID) not in chain_ids:
     # Chain id mismatch
     wallet_dapp.close()
     raise InvalidOption("Chain ID from Dapp is not the same as the wallet.")
@@ -216,12 +216,13 @@ Start a WalletConnect session : wait for the session call request message.
 Must be called right after a WCClient creation.  
 Returns : (message RPCid, chainIDsList, peerMeta data object).  
 Or throws WalletConnectClientException("sessionRequest timeout")
-after 8 seconds and no sessionRequest received.
+after 8 seconds and no sessionRequest received.  
+chainIDsList is a list of string.
 
 `reply_session_request( msg_id, chain_id, account_address )`  
 Send a session approval message, when user approved the connection session request in the wallet.  
 *msg_id* is the RPC id of the session approval request.
-*chain_id* is the integer ideitifying the blockchain.
+*chain_id* is the integer (or its string representation) identifying the blockchain.
 *account_address* is a string of the address of the wallet account ("0x...").
 
 `.reject_session_request( req_id )`  

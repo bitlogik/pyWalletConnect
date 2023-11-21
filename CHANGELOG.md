@@ -1,6 +1,10 @@
 
 # pyWalletConnect changes log
 
+## 1.6.2
+
+* Chain ID may be non-integer. Chain ID elements returned by open_session are string (breaking change)
+
 ## 1.6.0
 
 * Can handle all namespaces common usage patterns
